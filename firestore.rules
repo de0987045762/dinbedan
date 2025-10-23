@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return signedIn()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid))
+        : null;
+    }
+
+    function hasUserDoc() {
+      return userDoc() != null;
+    }
+
+    function role() {
+      let doc = userDoc();
+      return signedIn()
+        ? (doc != null && doc.data.role != null ? doc.data.role : "staff")
+        : "guest";
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
