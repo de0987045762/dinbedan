@@ -12,60 +12,6 @@ const auth = firebase.auth();
 const db   = firebase.firestore();
 auth.useDeviceLanguage();
 
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js';
-import {
-  getAuth,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut,
-  sendPasswordResetEmail,
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import {
-  getFirestore,
-  collection,
-  doc,
-  getDoc,
-  addDoc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  onSnapshot,
-  query,
-  orderBy,
-  limit,
-  serverTimestamp,
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import {
-  getStorage,
-  ref as storageRef,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject,
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
-
-const firebaseConfig = {
-  apiKey: 'AIzaSyAReTBGcVEi6JC0gRZWS110ePOv8kJ_hm0',
-  authDomain: 'newreport-89d34.firebaseapp.com',
-  projectId: 'newreport-89d34',
-  storageBucket: 'newreport-89d34.firebasestorage.app',
-  messagingSenderId: '894484318701',
-  appId: '1:894484318701:web:9dc4752226de8a47207fe4',
-  measurementId: 'G-J463N8284H',
-};
-
-const firebaseApp = initializeApp(firebaseConfig);
-let analytics;
-try {
-  analytics = getAnalytics(firebaseApp);
-} catch (error) {
-  console.info('[firebase] analytics unavailable in this environment', error);
-}
-
-const auth = getAuth(firebaseApp);
-const db = getFirestore(firebaseApp);
-const storage = getStorage(firebaseApp);
-
 function generateId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
