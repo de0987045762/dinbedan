@@ -21,7 +21,9 @@
 
 2. 造訪輸出的網址（預設為 <http://127.0.0.1:8080>），即可看到登入畫面。
 
-3. 可使用下列示範帳號登入：
+3. 於 Firebase Console > Authentication > Sign-in method 啟用 **Email/Password** 登入，否則會出現 `auth/configuration-not-found` 錯誤。
+
+4. 可使用下列示範帳號登入：
 
    | 角色   | Email                 | 密碼      |
    | ------ | -------------------- | --------- |
@@ -30,6 +32,8 @@
    | 員工   | `staff@example.com`  | `password` |
 
 登入後即可測試新增、編輯、刪除與篩選等操作。若要回到登入畫面，可使用右上角的「登出」按鈕。
+
+> 若仍然看到 `Firebase: Error (auth/configuration-not-found)`，請再次確認 Email/Password 登入方式已啟用，並重新整理頁面後再試。
 
 ## 菜單規劃與歷史
 
