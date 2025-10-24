@@ -1,16 +1,56 @@
-// Firebase 初始化
+import { initializeApp } from 'firebase/app';
+import { getAnalytics } from 'firebase/analytics';
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  sendPasswordResetEmail,
+} from 'firebase/auth';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+  addDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  limit,
+  serverTimestamp,
+} from 'firebase/firestore';
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject,
+} from 'firebase/storage';
+
 const firebaseConfig = {
-  apiKey: "AIzaSyAReTBGcVEi6JC0gRZWS110ePOv8kJ_hm0",
-  authDomain: "newreport-89d34.firebaseapp.com",
-  projectId: "newreport-89d34",
-  storageBucket: "newreport-89d34.firebasestorage.app",
-  messagingSenderId: "894484318701",
-  appId: "1:894484318701:web:9dc4752226de8a47207fe4"
+  apiKey: 'AIzaSyAReTBGcVEi6JC0gRZWS110ePOv8kJ_hm0',
+  authDomain: 'newreport-89d34.firebaseapp.com',
+  projectId: 'newreport-89d34',
+  storageBucket: 'newreport-89d34.firebasestorage.app',
+  messagingSenderId: '894484318701',
+  appId: '1:894484318701:web:9dc4752226de8a47207fe4',
+  measurementId: 'G-J463N8284H',
 };
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db   = firebase.firestore();
-auth.useDeviceLanguage();
+
+const firebaseApp = initializeApp(firebaseConfig);
+let analytics;
+try {
+  analytics = getAnalytics(firebaseApp);
+} catch (error) {
+  console.info('[firebase] analytics unavailable in this environment', error);
+}
+
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+const storage = getStorage(firebaseApp);
 
 function generateId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -49,6 +89,116 @@ const DAY_LABELS = {
 const STORAGE_KEYS = {
   MENU_PLANNER: 'war-dashboard-menu-planner',
 };
+
+const SUPER_ADMIN_EMAILS = ['k987045762@gmail.com'];
+
+const FEATURE_ENTRIES = [
+  {
+    key: 'staff-manage',
+    label: '人員管理',
+    defaultRoles: ['admin', 'manager'],
+    domRefs: ['btnStaffManage'],
+  },
+  {
+    key: 'report-create',
+    label: '新增戰報',
+    defaultRoles: ['admin', 'manager', 'staff'],
+    domRefs: ['btnCreateReport'],
+  },
+  {
+    key: 'reports-list',
+    label: '戰報列表',
+    defaultRoles: ['admin', 'manager', 'staff'],
+    domRefs: ['btnScrollReports'],
+  },
+  {
+    key: 'report-manage',
+    label: '戰報管理',
+    defaultRoles: ['admin', 'manager'],
+    domRefs: ['btnReportManage'],
+  },
+  {
+    key: 'menu-manage',
+    label: '菜單管理',
+    defaultRoles: ['admin', 'manager'],
+    domRefs: ['btnMenuManage'],
+  },
+  {
+    key: 'location-manage',
+    label: '據點管理',
+    defaultRoles: ['admin', 'manager'],
+    domRefs: ['btnLocationManage'],
+  },
+  {
+    key: 'announcement-manage',
+    label: '公告管理',
+    defaultRoles: ['admin', 'manager'],
+    domRefs: ['btnAnnManage', 'addAnnBtn'],
+  },
+  {
+    key: 'points',
+    label: '點數 / 商城',
+    defaultRoles: ['admin', 'manager', 'staff'],
+    domRefs: ['btnPoints'],
+  },
+  {
+    key: 'wish',
+    label: '許願池',
+    defaultRoles: ['admin', 'manager', 'staff'],
+    domRefs: ['btnWishPool'],
+  },
+  {
+    key: 'schedule',
+    label: '班表',
+    defaultRoles: ['admin', 'manager', 'staff'],
+    domRefs: ['btnSchedule'],
+  },
+];
+
+const FEATURE_KEY_SET = new Set(FEATURE_ENTRIES.map((entry) => entry.key));
+const FEATURE_LABEL_MAP = new Map(FEATURE_ENTRIES.map((entry) => [entry.key, entry.label]));
+
+function isSuperAdminEmail(email) {
+  return SUPER_ADMIN_EMAILS.includes((email || '').toLowerCase());
+}
+
+function sanitizeFeatureSelection(selection) {
+  if (!Array.isArray(selection) || !selection.length) return [];
+  const seen = new Set();
+  selection.forEach((key) => {
+    if (FEATURE_KEY_SET.has(key)) {
+      seen.add(key);
+    }
+  });
+  return Array.from(seen);
+}
+
+function getDefaultFeatureKeys(role) {
+  const normalizedRole = role || 'guest';
+  return FEATURE_ENTRIES.filter((entry) => entry.defaultRoles.includes(normalizedRole)).map((entry) => entry.key);
+}
+
+function computeUserFeatureAccess(role, docData = {}) {
+  const normalizedRole = role || 'guest';
+  const allowed = new Set(getDefaultFeatureKeys(normalizedRole));
+  const explicit = sanitizeFeatureSelection(docData.featureAccess);
+  if (explicit.length) {
+    allowed.clear();
+    explicit.forEach((key) => allowed.add(key));
+  }
+  if (normalizedRole === 'admin') {
+    FEATURE_ENTRIES.forEach((entry) => allowed.add(entry.key));
+  }
+  return allowed;
+}
+
+function getEffectiveFeatureKeys(role, docData = {}) {
+  return Array.from(computeUserFeatureAccess(role, docData));
+}
+
+function getFeatureLabel(key) {
+  return FEATURE_LABEL_MAP.get(key) ?? key;
+}
 
 function createDefaultMenuPlanner() {
   const baseItems = [
@@ -147,6 +297,7 @@ function scheduleMenuSave() {
 const state = {
   currentUser: null,
   currentUserDoc: null,
+  userFeatureSet: new Set(),
   announcements: [],
   reports: [],
   locations: [],
@@ -327,7 +478,9 @@ function updateCurrentUserFromDoc(docData = {}) {
   if (!state.currentUser) {
     state.currentUser = { id: null, email: '', displayName: '', role: 'staff', bv: 360 };
   }
-  const role = (docData.role || state.currentUser.role || 'staff').toString().toLowerCase();
+  const isSuperAdmin = isSuperAdminEmail(state.currentUser?.email);
+  const baseRole = (docData.role || state.currentUser.role || 'staff').toString().toLowerCase();
+  const role = isSuperAdmin ? 'admin' : baseRole;
   const displayName = docData.displayName || docData.name || state.currentUser.displayName || state.currentUser.email || '';
   const bv = typeof docData.bv === 'number' ? docData.bv : state.currentUser.bv ?? 360;
   state.currentUser = {
@@ -336,7 +489,13 @@ function updateCurrentUserFromDoc(docData = {}) {
     role,
     bv,
   };
-  state.currentUserDoc = docData;
+  const sanitizedFeatureAccess = sanitizeFeatureSelection(docData.featureAccess);
+  state.currentUserDoc = {
+    ...docData,
+    role,
+    featureAccess: sanitizedFeatureAccess,
+  };
+  state.userFeatureSet = computeUserFeatureAccess(role, state.currentUserDoc);
   refreshCurrentUserUi();
 }
 
@@ -369,10 +528,13 @@ function subscribeToCollections(uid) {
   state.subscriptions.staff = onSnapshot(collection(db, 'users'), (snapshot) => {
     state.staff = snapshot.docs.map((docSnap) => {
       const data = withTimestamps(docSnap.data());
+      const role = (data.role || '').toString().toLowerCase();
+      const featureAccess = sanitizeFeatureSelection(data.featureAccess);
       return {
         id: docSnap.id,
         ...data,
-        role: (data.role || '').toString().toLowerCase(),
+        role,
+        featureAccess,
       };
     });
     renderReports();
@@ -595,16 +757,26 @@ function closeModal(modalEl) {
   modalEl.remove();
 }
 
-function setFeatureVisibility() {
-  const isAdmin = state.currentUser?.role === 'admin';
-  const isManager = isAdmin || state.currentUser?.role === 'manager';
+function hasFeatureAccess(key) {
+  if (!key) return false;
+  if (!state.currentUser) return false;
+  if (state.currentUser.role === 'admin') return true;
+  return state.userFeatureSet.has(key);
+}
 
-  dom.btnStaffManage?.classList.toggle('hidden', !(isAdmin || isManager));
-  dom.btnReportManage?.classList.toggle('hidden', !isManager);
-  dom.btnAnnManage?.classList.toggle('hidden', !isManager);
-  dom.addAnnBtn?.classList.toggle('hidden', !isManager);
-  dom.btnMenuManage?.classList.toggle('hidden', !isManager);
-  dom.btnLocationManage?.classList.toggle('hidden', !isManager);
+function setFeatureVisibility() {
+  const isAuthenticated = Boolean(state.currentUser);
+  const isAdmin = state.currentUser?.role === 'admin';
+  const featureSet = state.userFeatureSet instanceof Set ? state.userFeatureSet : new Set();
+
+  FEATURE_ENTRIES.forEach((entry) => {
+    const visible = isAuthenticated && (isAdmin || featureSet.has(entry.key));
+    entry.domRefs.forEach((ref) => {
+      const el = dom[ref];
+      if (!el) return;
+      el.classList.toggle('hidden', !visible);
+    });
+  });
 }
 
 function findLevel(bv) {
@@ -719,8 +891,8 @@ function openAnnouncementDetail(id) {
     content,
   });
 
-  const isManager = ['admin', 'manager'].includes(state.currentUser?.role);
-  if (isManager) {
+  const canManage = hasFeatureAccess('announcement-manage');
+  if (canManage) {
     const actions = document.createElement('div');
     actions.className = 'flex gap-2 justify-end';
     const editBtn = document.createElement('button');
@@ -743,6 +915,10 @@ function openAnnouncementDetail(id) {
 }
 
 function openAnnouncementModal(id = null) {
+  if (!hasFeatureAccess('announcement-manage')) {
+    Swal.fire('權限不足', '僅限管理員編輯公告', 'warning');
+    return;
+  }
   const template = document.getElementById('announcementFormTemplate');
   const form = template.content.firstElementChild.cloneNode(true);
   const ann = id ? state.announcements.find((item) => item.id === id) : null;
@@ -802,6 +978,10 @@ function openAnnouncementModal(id = null) {
 }
 
 function deleteAnnouncement(id) {
+  if (!hasFeatureAccess('announcement-manage')) {
+    Swal.fire('權限不足', '僅限管理員刪除公告', 'warning');
+    return;
+  }
   Swal.fire({
     title: '確定刪除？',
     icon: 'warning',
@@ -854,7 +1034,10 @@ function renderAnnouncementManage(list = state.announcements) {
 }
 
 function showAnnouncementManageModal() {
-  if (!['admin', 'manager'].includes(state.currentUser?.role)) return;
+  if (!hasFeatureAccess('announcement-manage')) {
+    Swal.fire('權限不足', '僅限管理員檢視公告管理', 'warning');
+    return;
+  }
   const content = document.createElement('div');
   content.className = 'space-y-4';
   const controls = document.createElement('div');
@@ -903,6 +1086,9 @@ function renderReports() {
   const container = dom.reportsContainer;
   const empty = dom.reportsEmpty;
   const data = applyReportFilters();
+  const canManageReports = hasFeatureAccess('report-manage');
+  const canCreateReports = hasFeatureAccess('report-create');
+  const currentUserId = state.currentUser?.id;
   container.innerHTML = '';
   renderReportAggregates(data);
   if (!data.length) {
@@ -916,9 +1102,17 @@ function renderReports() {
     card.className = 'report-card';
     const badges = (report.badges || []).map((badge) => renderBadgeChip(badge)).join(' ');
     const amountText = report.finalTotal ? `NT$ ${formatNumber(report.finalTotal)}` : '';
-    const deliveryText = report.deliveryNotes ? `<div class="mt-2 text-xs text-amber-600">外送：${report.deliveryNotes}</div>` : '';
+    const deliveryText = report.deliveryNotes
+      ? `<div class="mt-2 text-xs text-amber-600">外送：${report.deliveryNotes}</div>`
+      : '';
+    const canEdit = canManageReports || (canCreateReports && report.owner === currentUserId);
+    const canDelete = canManageReports;
+    const editButtonHtml = canEdit ? '<button class="edit-btn-report">編輯</button>' : '';
+    const deleteButtonHtml = canDelete
+      ? '<button class="px-2 py-1 bg-red-100 text-red-600 rounded" data-role="delete-report">刪除</button>'
+      : '';
     card.innerHTML = `
-      <button class="edit-btn-report">編輯</button>
+      ${editButtonHtml}
       <div class="flex justify-between items-start gap-3">
         <div>
           <div class="text-xs text-gray-400">${formatDate(report.date)} · ${report.location}</div>
@@ -933,17 +1127,22 @@ function renderReports() {
         <span>負責人：${getStaffName(report.owner)}</span>
       </div>
       <div class="actions flex gap-2 mt-3 text-xs">
-        <button class="px-2 py-1 bg-blue-100 text-blue-600 rounded">查看</button>
-        <button class="px-2 py-1 bg-red-100 text-red-600 rounded">刪除</button>
+        <button class="px-2 py-1 bg-blue-100 text-blue-600 rounded" data-role="view-report">查看</button>
+        ${deleteButtonHtml}
       </div>`;
-    const [editBtn] = card.getElementsByClassName('edit-btn-report');
-    editBtn.addEventListener('click', (evt) => {
-      evt.stopPropagation();
-      openReportModal(report.id);
-    });
-    const [viewBtn, deleteBtn] = card.querySelectorAll('.actions button');
+    const editBtn = card.querySelector('.edit-btn-report');
+    if (editBtn) {
+      editBtn.addEventListener('click', (evt) => {
+        evt.stopPropagation();
+        openReportModal(report.id);
+      });
+    }
+    const viewBtn = card.querySelector('[data-role="view-report"]');
     viewBtn.addEventListener('click', () => viewReport(report.id));
-    deleteBtn.addEventListener('click', () => deleteReport(report.id));
+    const deleteBtn = card.querySelector('[data-role="delete-report"]');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', () => deleteReport(report.id));
+    }
     container.appendChild(card);
   });
 }
@@ -969,7 +1168,10 @@ function renderReportAggregates(reports) {
 }
 
 function openReportManageModal() {
-  if (!['admin', 'manager'].includes(state.currentUser?.role)) return;
+  if (!hasFeatureAccess('report-manage')) {
+    Swal.fire('權限不足', '僅限管理員檢視戰報總覽', 'warning');
+    return;
+  }
   const today = new Date().toISOString().slice(0, 10);
   const monthFirst = `${today.slice(0, 8)}01`;
 
@@ -1317,6 +1519,22 @@ function openReportModal(id = null) {
   const template = document.getElementById('reportFormTemplate');
   const form = template.content.firstElementChild.cloneNode(true);
   const report = id ? state.reports.find((item) => item.id === id) : null;
+  if (id && !report) {
+    Swal.fire('找不到戰報', '請重新整理後再試一次', 'warning');
+    return;
+  }
+  if (!report && !hasFeatureAccess('report-create')) {
+    Swal.fire('權限不足', '僅限有權限的夥伴新增戰報', 'warning');
+    return;
+  }
+  if (report) {
+    const canManage = hasFeatureAccess('report-manage');
+    const isOwner = report.owner === state.currentUser?.id;
+    if (!canManage && !isOwner) {
+      Swal.fire('權限不足', '僅能編輯自己的戰報', 'warning');
+      return;
+    }
+  }
 
   const locationSelect = form.querySelector('select[name="location"]');
   state.locations.forEach((loc) => {
@@ -1547,6 +1765,10 @@ function viewReport(id) {
 }
 
 function deleteReport(id) {
+  if (!hasFeatureAccess('report-manage')) {
+    Swal.fire('權限不足', '僅限管理員刪除戰報', 'warning');
+    return Promise.resolve(false);
+  }
   return Swal.fire({
     title: '確定刪除戰報？',
     icon: 'warning',
@@ -1601,7 +1823,10 @@ function populateLocationFilter() {
 }
 
 function showLocationManageModal() {
-  if (!['admin', 'manager'].includes(state.currentUser?.role)) return;
+  if (!hasFeatureAccess('location-manage')) {
+    Swal.fire('權限不足', '僅限管理員管理據點', 'warning');
+    return;
+  }
   const content = document.createElement('div');
   content.className = 'space-y-4';
   const list = document.createElement('div');
@@ -1733,7 +1958,10 @@ function showLocationManageModal() {
 }
 
 function showMenuEditModal() {
-  if (!['admin', 'manager'].includes(state.currentUser?.role)) return;
+  if (!hasFeatureAccess('menu-manage')) {
+    Swal.fire('權限不足', '僅限管理員調整菜單', 'warning');
+    return;
+  }
   const content = document.createElement('div');
   content.className = 'space-y-4';
 
@@ -2248,7 +2476,10 @@ function showMenuEditModal() {
 
 
 function showStaffManageModal() {
-  if (!['admin', 'manager'].includes(state.currentUser?.role)) return;
+  if (!hasFeatureAccess('staff-manage')) {
+    Swal.fire('權限不足', '僅限管理員管理人員資料', 'warning');
+    return;
+  }
   const content = document.createElement('div');
   content.className = 'space-y-4';
   const table = document.createElement('table');
@@ -2259,6 +2490,7 @@ function showStaffManageModal() {
         <th>姓名</th>
         <th>角色</th>
         <th>Email</th>
+        <th>功能入口</th>
         <th>操作</th>
       </tr>
     </thead>
@@ -2276,10 +2508,13 @@ function showStaffManageModal() {
     tbody.innerHTML = '';
     state.staff.forEach((staff) => {
       const tr = document.createElement('tr');
+      const featureKeys = getEffectiveFeatureKeys(staff.role, staff);
+      const featureText = featureKeys.length ? featureKeys.map(getFeatureLabel).join('、') : '—';
       tr.innerHTML = `
         <td>${staff.name}</td>
         <td><span class="badge badge-${staff.role}">${staff.role}</span></td>
         <td>${staff.email}</td>
+        <td class="text-xs text-gray-600">${featureText}</td>
         <td class="flex gap-2">
           <button class="px-2 py-1 bg-blue-600 text-white rounded text-xs" data-action="edit" data-id="${staff.id}">編輯</button>
           <button class="px-2 py-1 bg-red-600 text-white rounded text-xs" data-action="delete" data-id="${staff.id}">刪除</button>
@@ -2322,6 +2557,20 @@ function showStaffManageModal() {
           <option value="admin">admin</option>
         </select>
       </div>
+      <div>
+        <label class="text-xs text-gray-500">功能入口權限</label>
+        <div class="grid grid-cols-2 gap-2 mt-1" data-role="feature-options">
+          ${FEATURE_ENTRIES.map(
+            (entry) => `
+              <label class="flex items-center gap-2 text-xs">
+                <input type="checkbox" name="featureAccess" value="${entry.key}" />
+                <span>${entry.label}</span>
+              </label>
+            `,
+          ).join('')}
+        </div>
+        <p class="text-[11px] text-gray-400 mt-1">勾選後該人員登入時會看到相對應的功能入口。</p>
+      </div>
       <div class="flex justify-between items-center">
         <button type="button" data-role="delete" class="px-3 py-2 bg-red-100 text-red-600 rounded hidden">刪除</button>
         <div class="flex gap-2">
@@ -2331,6 +2580,7 @@ function showStaffManageModal() {
       </div>`;
 
     const staff = id ? state.staff.find((item) => item.id === id) : null;
+    const canConfigureFeatures = state.currentUser?.role === 'admin' || isSuperAdminEmail(state.currentUser?.email);
     if (staff) {
       form.id.value = staff.id;
       form.name.value = staff.name;
@@ -2338,6 +2588,33 @@ function showStaffManageModal() {
       form.role.value = staff.role;
       form.querySelector('[data-role="delete"]').classList.remove('hidden');
     }
+
+    const featureInputs = Array.from(form.querySelectorAll('input[name="featureAccess"]'));
+    const applyFeatureSelection = (keys) => {
+      const selection = new Set(sanitizeFeatureSelection(keys));
+      featureInputs.forEach((input) => {
+        input.checked = selection.has(input.value);
+      });
+    };
+    let featureTouched = false;
+    featureInputs.forEach((input) => {
+      input.addEventListener('change', () => {
+        featureTouched = true;
+      });
+    });
+    const initialSelection = staff
+      ? getEffectiveFeatureKeys(staff.role, staff)
+      : getDefaultFeatureKeys(form.role.value);
+    applyFeatureSelection(initialSelection);
+    if (!canConfigureFeatures) {
+      featureInputs.forEach((input) => {
+        input.disabled = true;
+      });
+    }
+    form.role.addEventListener('change', () => {
+      if (canConfigureFeatures && featureTouched) return;
+      applyFeatureSelection(getDefaultFeatureKeys(form.role.value));
+    });
 
     const modal = createModal({ title: staff ? '編輯人員' : '新增人員', content: form });
 
@@ -2354,6 +2631,14 @@ function showStaffManageModal() {
         return;
       }
 
+      let selectedFeatures;
+      if (canConfigureFeatures) {
+        selectedFeatures = sanitizeFeatureSelection(
+          featureInputs.filter((input) => input.checked).map((input) => input.value),
+        );
+        payload.featureAccess = selectedFeatures;
+      }
+
       (async () => {
         try {
           if (staff) {
@@ -2363,6 +2648,9 @@ function showStaffManageModal() {
               updatedBy: state.currentUser?.id ?? null,
             });
             Object.assign(staff, payload);
+            if (selectedFeatures) {
+              staff.featureAccess = selectedFeatures;
+            }
             Swal.fire('人員已更新', '', 'success');
           } else {
             const docRef = await addDoc(collection(db, 'users'), {
@@ -2370,7 +2658,11 @@ function showStaffManageModal() {
               createdAt: serverTimestamp(),
               createdBy: state.currentUser?.id ?? null,
             });
-            state.staff.push({ id: docRef.id, ...payload });
+            state.staff.push({
+              id: docRef.id,
+              ...payload,
+              featureAccess: selectedFeatures || [],
+            });
             Swal.fire('人員已新增', '', 'success');
           }
           closeModal(modal);
@@ -2622,6 +2914,10 @@ function mapFirebaseError(error) {
     'auth/user-not-found': '找不到使用者',
     'auth/wrong-password': '密碼錯誤',
     'auth/too-many-requests': '嘗試次數過多，請稍後再試',
+    'auth/configuration-not-found':
+      'Firebase 專案尚未啟用 Email/Password 登入或認證設定尚未完成，請在 Firebase Console > Authentication 中啟用 Email/Password 登入方式。',
+    'auth/invalid-api-key': 'Firebase API Key 無效，請確認 app.js 中的 firebaseConfig。',
+    'auth/network-request-failed': '網路連線異常，請確認裝置的網路狀態後再試。',
   };
   return map[code] || message || code || '未知錯誤';
 }
@@ -2659,11 +2955,52 @@ function renderAfterLogin() {
 
 async function loadCurrentUserProfile(uid) {
   try {
-    const snapshot = await getDoc(doc(db, 'users', uid));
+    const docRef = doc(db, 'users', uid);
+    const snapshot = await getDoc(docRef);
+    const isSuperAdmin = isSuperAdminEmail(state.currentUser?.email);
     if (snapshot.exists()) {
-      updateCurrentUserFromDoc(snapshot.data());
+      const data = snapshot.data() || {};
+      if (isSuperAdmin) {
+        const updates = {};
+        if ((data.role || '').toString().toLowerCase() !== 'admin') {
+          updates.role = 'admin';
+        }
+        const sanitizedFeatures = sanitizeFeatureSelection(data.featureAccess);
+        const fullFeatureKeys = FEATURE_ENTRIES.map((entry) => entry.key);
+        const hasAllFeatures =
+          sanitizedFeatures.length === fullFeatureKeys.length &&
+          fullFeatureKeys.every((key) => sanitizedFeatures.includes(key));
+        if (!hasAllFeatures) {
+          updates.featureAccess = fullFeatureKeys;
+        }
+        if (Object.keys(updates).length) {
+          updates.updatedAt = serverTimestamp();
+          updates.updatedBy = uid;
+          await setDoc(docRef, updates, { merge: true });
+          Object.assign(data, updates);
+        }
+      }
+      updateCurrentUserFromDoc(data);
     } else {
-      updateCurrentUserFromDoc({});
+      const data = {};
+      if (isSuperAdmin) {
+        const fullFeatureKeys = FEATURE_ENTRIES.map((entry) => entry.key);
+        await setDoc(
+          docRef,
+          {
+            role: 'admin',
+            email: state.currentUser?.email ?? '',
+            displayName: state.currentUser?.displayName ?? '',
+            featureAccess: fullFeatureKeys,
+            createdAt: serverTimestamp(),
+            createdBy: uid,
+          },
+          { merge: true },
+        );
+        data.role = 'admin';
+        data.featureAccess = fullFeatureKeys;
+      }
+      updateCurrentUserFromDoc(data);
     }
   } catch (error) {
     console.warn('[auth] load profile failed', error);
@@ -2675,6 +3012,7 @@ function cleanupAfterLogout() {
   unsubscribeAll();
   state.currentUser = null;
   state.currentUserDoc = null;
+  state.userFeatureSet = new Set();
   state.announcements = [];
   state.reports = [];
   state.locations = [];
@@ -2793,7 +3131,12 @@ function initDomRefs() {
   dom.todaySummary = qs('#todaySummary');
   dom.quickTodayStats = qs('#quickTodayStats');
   dom.announcementsArea = qs('#announcementsArea');
+  dom.btnPoints = qs('#btnPoints');
+  dom.btnWishPool = qs('#btnWishPool');
+  dom.btnSchedule = qs('#btnSchedule');
   dom.btnStaffManage = qs('#btnStaffManage');
+  dom.btnCreateReport = qs('#btnCreateReport');
+  dom.btnScrollReports = qs('#btnScrollReports');
   dom.btnReportManage = qs('#btnReportManage');
   dom.btnAnnManage = qs('#btnAnnManage');
   dom.addAnnBtn = qs('#addAnnBtn');
@@ -2814,12 +3157,12 @@ function initEventBindings() {
   qs('#btnRegisterHint').addEventListener('click', showRegisterHint);
   qs('#btnResetPassword').addEventListener('click', showResetPassword);
   qsa('[data-quick]').forEach((btn) => btn.addEventListener('click', () => quickLogin(btn.dataset.quick)));
-  qs('#btnPoints').addEventListener('click', openPointsModal);
-  qs('#btnWishPool').addEventListener('click', openWishPoolModal);
-  qs('#btnSchedule').addEventListener('click', openScheduleModal);
+  dom.btnPoints?.addEventListener('click', openPointsModal);
+  dom.btnWishPool?.addEventListener('click', openWishPoolModal);
+  dom.btnSchedule?.addEventListener('click', openScheduleModal);
   dom.btnStaffManage.addEventListener('click', showStaffManageModal);
-  qs('#btnCreateReport').addEventListener('click', () => openReportModal());
-  qs('#btnScrollReports').addEventListener('click', () => qs('#reportsSection').scrollIntoView({ behavior: 'smooth' }));
+  dom.btnCreateReport?.addEventListener('click', () => openReportModal());
+  dom.btnScrollReports?.addEventListener('click', () => qs('#reportsSection').scrollIntoView({ behavior: 'smooth' }));
   dom.btnReportManage.addEventListener('click', openReportManageModal);
   dom.btnAnnManage.addEventListener('click', showAnnouncementManageModal);
   dom.addAnnBtn.addEventListener('click', () => openAnnouncementModal());
