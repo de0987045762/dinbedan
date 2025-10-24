@@ -1,5 +1,4 @@
 # dinbedan
-# dinbedan
 
 本專案提供一個以純前端方式模擬 Firebase 戰報系統的互動介面，支援登入、公告、戰報、菜單、據點、人員與許願池等管理功能。所有資料皆儲存在記憶體中，方便在無後端環境下演示功能流程。
 
@@ -43,3 +42,13 @@
 1. 於主畫面點選「戰報管理」開啟總覽，即可依多種條件載入戰報列表。
 2. 列表支援批次勾選刪除與 CSV 匯出，表格上方會即時統計總實收、平均實收、總售出與剩餘量。
 3. 點擊「查看」可檢視完整戰報與菜單快照，「編輯」則會載入原表單供更新。
+
+## GitHub Pages Deployment
+
+This repository ships with a GitHub Actions workflow (`.github/workflows/deploy.yml`) that builds the static assets and publishes them to GitHub Pages.  The workflow:
+
+- Uploads the site files from the `dist/` directory as a Pages artifact.
+- Uses the latest `actions/deploy-pages@v4` action to publish the artifact.
+- Skips the deploy step if the workflow run has already been cancelled so that cancelled runs do not fail while attempting to cancel a finished deployment.
+
+If you trigger multiple builds quickly, only the newest run will continue and older runs will exit cleanly without raising the `Cancelling pages deployment failed` error.
