@@ -1,10 +1,16 @@
+// ---- uuid helper (safe for old browsers) ----
 function uuid() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
-
-  return "id-" + Math.random().toString(36).slice(2, 11);
+  // fallback
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 }
+
 
 const MOCK_USERS = [
   { id: 'u-admin', email: 'admin@example.com', password: 'password', displayName: '超級管理員', role: 'admin', bv: 950 },
