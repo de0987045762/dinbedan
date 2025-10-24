@@ -1,3 +1,17 @@
+// Firebase 初始化
+const firebaseConfig = {
+  apiKey: "AIzaSyAReTBGcVEi6JC0gRZWS110ePOv8kJ_hm0",
+  authDomain: "newreport-89d34.firebaseapp.com",
+  projectId: "newreport-89d34",
+  storageBucket: "newreport-89d34.firebasestorage.app",
+  messagingSenderId: "894484318701",
+  appId: "1:894484318701:web:9dc4752226de8a47207fe4"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+auth.useDeviceLanguage();
+
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js';
 import {
