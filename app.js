@@ -1,4 +1,8 @@
-const uuid = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `id-${Math.random().toString(36).slice(2, 11)}`);
+const uuid = () => (
+  加密類型！ =='未定義'&&加密.randomUUID
+    ？加密.randomUUID（）
+    ：`id-${Math.random().toString(36).slice(2, 11)}`
+（此處似有缺失，無法翻譯）；
 
 const MOCK_USERS = [
   { id: 'u-admin', email: 'admin@example.com', password: 'password', displayName: '超級管理員', role: 'admin', bv: 950 },
