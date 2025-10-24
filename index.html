@@ -186,7 +186,7 @@
   </template>
 
   <template id="reportFormTemplate">
-    <form class="space-y-3">
+    <form class="space-y-4">
       <input type="hidden" name="id" />
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
@@ -211,10 +211,74 @@
           <select name="owner" class="w-full border rounded px-3 py-2 text-sm" required></select>
         </div>
       </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <label class="text-xs text-gray-500">實收金額</label>
+          <input type="number" name="finalTotal" min="0" class="w-full border rounded px-3 py-2 text-sm" placeholder="0" />
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">售出總數</label>
+          <input type="number" name="totalSold" min="0" class="w-full border rounded px-3 py-2 text-sm" placeholder="0" />
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">剩餘數量</label>
+          <input type="number" name="totalRemaining" min="0" class="w-full border rounded px-3 py-2 text-sm" placeholder="0" />
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">折扣金額</label>
+          <input type="number" name="totalDiscount" min="0" class="w-full border rounded px-3 py-2 text-sm" placeholder="0" />
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">電子支付</label>
+          <input type="number" name="electronicPayment" min="0" class="w-full border rounded px-3 py-2 text-sm" placeholder="0" />
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">未入帳</label>
+          <input type="number" name="notYetPaid" min="0" class="w-full border rounded px-3 py-2 text-sm" placeholder="0" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-gray-500">菜單</label>
+          <select name="menuTemplate" class="w-full border rounded px-3 py-2 text-sm"></select>
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">外送摘要</label>
+          <input type="text" name="deliveryNotes" class="w-full border rounded px-3 py-2 text-sm" placeholder="例如：外送 20 份" />
+        </div>
+      </div>
+
+      <div class="bg-slate-50 border rounded px-3 py-2 text-xs" data-role="menu-preview">選擇菜單後會顯示預設品項與數量。</div>
+
       <div>
         <label class="text-xs text-gray-500">摘要</label>
         <textarea name="summary" rows="3" class="w-full border rounded px-3 py-2 text-sm" required></textarea>
       </div>
+
+      <div>
+        <label class="text-xs text-gray-500">徽章</label>
+        <div class="flex flex-wrap gap-3 text-xs" data-role="badge-group">
+          <label class="flex items-center gap-1"><input type="checkbox" name="badges" value="TARGET" /> 達標</label>
+          <label class="flex items-center gap-1"><input type="checkbox" name="badges" value="EXCEED" /> 超標</label>
+          <label class="flex items-center gap-1"><input type="checkbox" name="badges" value="NEW" /> 新品</label>
+        </div>
+      </div>
+
+      <div>
+        <label class="text-xs text-gray-500">備註</label>
+        <textarea name="notes" rows="2" class="w-full border rounded px-3 py-2 text-sm"></textarea>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500">顧客反饋</label>
+        <textarea name="customerFeedback" rows="2" class="w-full border rounded px-3 py-2 text-sm"></textarea>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500">我的回應</label>
+        <textarea name="myResponse" rows="2" class="w-full border rounded px-3 py-2 text-sm"></textarea>
+      </div>
+
       <div class="flex justify-end gap-2 text-sm">
         <button type="button" data-role="cancel" class="px-3 py-2 bg-gray-200 rounded">取消</button>
         <button type="submit" class="px-3 py-2 bg-emerald-600 text-white rounded">儲存</button>
