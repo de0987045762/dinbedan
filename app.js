@@ -1,8 +1,10 @@
-const uuid = () => (
-  加密類型！ =='未定義'&&加密.randomUUID
-    ？加密.randomUUID（）
-    ：`id-${Math.random().toString(36).slice(2, 11)}`
-（此處似有缺失，無法翻譯）；
+函數 uuid() {
+  如果（typeof crypto！=='未定義'&&typeof crypto.randomUUID ==='函數'）{
+    返回 crypto.randomUUID()；
+  }
+
+  返回“id-”+Math.random().toString(36).slice(2, 11);
+}
 
 const MOCK_USERS = [
   { id: 'u-admin', email: 'admin@example.com', password: 'password', displayName: '超級管理員', role: 'admin', bv: 950 },
