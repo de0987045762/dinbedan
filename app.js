@@ -1,22 +1,64 @@
-// ---- uuid helper (safe for old browsers) ----
-function uuid() {
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js';
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  sendPasswordResetEmail,
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+  addDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  limit,
+  serverTimestamp,
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject,
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
+
+const firebaseConfig = {
+  apiKey: 'AIzaSyAReTBGcVEi6JC0gRZWS110ePOv8kJ_hm0',
+  authDomain: 'newreport-89d34.firebaseapp.com',
+  projectId: 'newreport-89d34',
+  storageBucket: 'newreport-89d34.firebasestorage.app',
+  messagingSenderId: '894484318701',
+  appId: '1:894484318701:web:9dc4752226de8a47207fe4',
+  measurementId: 'G-J463N8284H',
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+let analytics;
+try {
+  analytics = getAnalytics(firebaseApp);
+} catch (error) {
+  console.info('[firebase] analytics unavailable in this environment', error);
+}
+
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+const storage = getStorage(firebaseApp);
+
+function generateId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
-  // fallback
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+
+  return 'id-' + Math.random().toString(36).slice(2, 11);
 }
-
-
-const MOCK_USERS = [
-  { id: 'u-admin', email: 'admin@example.com', password: 'password', displayName: '超級管理員', role: 'admin', bv: 950 },
-  { id: 'u-manager', email: 'manager@example.com', password: 'password', displayName: '區域經理', role: 'manager', bv: 780 },
-  { id: 'u-staff', email: 'staff@example.com', password: 'password', displayName: '基層員工', role: 'staff', bv: 420 },
-];
 
 const LEVEL_RANGES = [
   { code: 'lv1', name: 'Lv1', min: 0, max: 399 },
@@ -28,6 +70,12 @@ const LEVEL_RANGES = [
   { code: 'lv7', name: 'Lv7', min: 960, max: 1000 },
   { code: 'ex', name: 'EX', min: 1001, max: 1100 },
 ];
+
+const QUICK_LOGIN_PRESETS = {
+  admin: { email: 'admin@example.com', password: 'password' },
+  manager: { email: 'manager@example.com', password: 'password' },
+  staff: { email: 'staff@example.com', password: 'password' },
+};
 
 const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
 const DAY_LABELS = {
@@ -45,14 +93,14 @@ const STORAGE_KEYS = {
 function createDefaultMenuPlanner() {
   const baseItems = [
     {
-      id: uuid(),
+      id: generateId(),
       name: '經典牛肉堡',
       price: 120,
       defaultQuantity: {},
       deliveryTotal: 0,
     },
     {
-      id: uuid(),
+      id: generateId(),
       name: '香烤雞腿堡',
       price: 110,
       defaultQuantity: {},
@@ -61,7 +109,7 @@ function createDefaultMenuPlanner() {
   ];
   const templates = DAY_KEYS.reduce((acc, key) => {
     acc[key] = {
-      items: baseItems.map((item) => ({ ...item, id: uuid() })),
+      items: baseItems.map((item) => ({ ...item, id: generateId() })),
       dailySpecial: { name: key === 'wednesday' ? '限定炸雞拼盤' : '', price: 0 },
       updatedAt: new Date().toISOString(),
     };
@@ -94,7 +142,7 @@ function loadMenuPlanner() {
   }
 }
 
-function persistMenuPlanner() {
+function persistMenuPlanner(syncRemote = true) {
   try {
     if (typeof localStorage === 'undefined') return;
     const payload = JSON.stringify(state.menuPlanner);
@@ -102,59 +150,49 @@ function persistMenuPlanner() {
   } catch (error) {
     console.warn('[menuPlanner] persist failed', error);
   }
+  if (syncRemote) scheduleMenuSave();
+}
+
+let menuSaveTimer = null;
+
+function sanitizeMenuPayload(menu) {
+  try {
+    return JSON.parse(JSON.stringify(menu || {}));
+  } catch (error) {
+    console.warn('[menuPlanner] sanitize failed', error);
+    return {};
+  }
+}
+
+function scheduleMenuSave() {
+  if (menuSaveTimer) clearTimeout(menuSaveTimer);
+  menuSaveTimer = setTimeout(async () => {
+    const payload = sanitizeMenuPayload(state.menuPlanner);
+    try {
+      await setDoc(
+        doc(db, 'menu', 'data'),
+        {
+          menu: payload,
+          updatedAt: serverTimestamp(),
+          updatedBy: state.currentUser?.id ?? null,
+        },
+        { merge: true },
+      );
+    } catch (error) {
+      console.warn('[menuPlanner] firestore sync failed', error);
+    }
+  }, 600);
 }
 
 const state = {
   currentUser: null,
-  announcements: [
-    {
-      id: uuid(),
-      type: 'important',
-      title: '新品上市通知',
-      content: '本週推出全新套餐，請各據點協助宣傳。',
-      imageUrl: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: null,
-      createdBy: 'u-admin',
-    },
-  ],
-  reports: [
-    {
-      id: uuid(),
-      date: new Date().toISOString().slice(0, 10),
-      location: '台北館前店',
-      status: '正常營業',
-      summary: '今日營運順利，午餐時段人潮踴躍。',
-      owner: 'u-manager',
-      createdAt: new Date().toISOString(),
-      finalTotal: 18500,
-      totalSold: 240,
-      totalRemaining: 35,
-      totalDiscount: 500,
-      electronicPayment: 12000,
-      notYetPaid: 0,
-      badges: ['TARGET'],
-      notes: '午餐出餐順暢。',
-      customerFeedback: '顧客反應餐點口味佳。',
-      myResponse: '持續加強服務品質。',
-      menuTemplate: 'monday',
-      menuSnapshot: null,
-      deliveryNotes: '外送 25 份',
-    },
-  ],
-  locations: [
-    { id: uuid(), name: '台北館前店', description: '捷運站前黃金店面' },
-    { id: uuid(), name: '新北板橋店', description: '近府中商圈' },
-  ],
+  currentUserDoc: null,
+  announcements: [],
+  reports: [],
+  locations: [],
+  staff: [],
+  wishes: [],
   menuPlanner: loadMenuPlanner(),
-  staff: [
-    { id: 'u-admin', name: '超級管理員', role: 'admin', email: 'admin@example.com' },
-    { id: 'u-manager', name: '區域經理', role: 'manager', email: 'manager@example.com' },
-    { id: 'u-staff', name: '基層員工', role: 'staff', email: 'staff@example.com' },
-  ],
-  wishes: [
-    { id: uuid(), title: '增加下午茶時段點心', status: 'pending', votes: 8 },
-  ],
   incentives: {
     targetAvgBV: 820,
     bonusAmount: 3000,
@@ -163,11 +201,8 @@ const state = {
     base: 360,
     monthCap: 40,
   },
+  subscriptions: {},
 };
-
-if (state.reports[0]) {
-  state.reports[0].menuSnapshot = buildMenuSnapshot(ensureMenuTemplate(state.reports[0].menuTemplate), state.reports[0].date, state.reports[0].menuTemplate);
-}
 
 const dom = {};
 
@@ -204,6 +239,41 @@ function getCurrentMenuDay() {
 
 function formatNumber(value) {
   return Number(value ?? 0).toLocaleString();
+}
+
+function toIsoString(value) {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'string') return value;
+  if (typeof value.toDate === 'function') {
+    try {
+      return value.toDate().toISOString();
+    } catch (error) {
+      console.warn('[timestamp] convert failed', error);
+    }
+  }
+  return null;
+}
+
+function withTimestamps(data) {
+  if (!data || typeof data !== 'object') return data;
+  const clone = { ...data };
+  if ('createdAt' in clone) clone.createdAt = toIsoString(clone.createdAt);
+  if ('updatedAt' in clone) clone.updatedAt = toIsoString(clone.updatedAt);
+  return clone;
+}
+
+function unsubscribeAll() {
+  Object.values(state.subscriptions).forEach((unsubscribe) => {
+    if (typeof unsubscribe === 'function') {
+      try {
+        unsubscribe();
+      } catch (error) {
+        console.warn('[firebase] unsubscribe failed', error);
+      }
+    }
+  });
+  state.subscriptions = {};
 }
 
 function cloneMenuData(data) {
@@ -277,7 +347,7 @@ function buildMenuSnapshot(template, dateStr, dayKey) {
   const copy = cloneMenuData(template);
   const totals = computeMenuTotals(template);
   return {
-    id: uuid(),
+    id: generateId(),
     date: dateStr,
     dayKey,
     createdAt: new Date().toISOString(),
@@ -291,6 +361,91 @@ function addMenuHistoryEntry(snapshot) {
   state.menuPlanner.history.unshift(snapshot);
   state.menuPlanner.lastSavedAt = new Date().toISOString();
   persistMenuPlanner();
+}
+
+function updateCurrentUserFromDoc(docData = {}) {
+  if (!state.currentUser) {
+    state.currentUser = { id: null, email: '', displayName: '', role: 'staff', bv: 360 };
+  }
+  const role = (docData.role || state.currentUser.role || 'staff').toString().toLowerCase();
+  const displayName = docData.displayName || docData.name || state.currentUser.displayName || state.currentUser.email || '';
+  const bv = typeof docData.bv === 'number' ? docData.bv : state.currentUser.bv ?? 360;
+  state.currentUser = {
+    ...state.currentUser,
+    displayName,
+    role,
+    bv,
+  };
+  state.currentUserDoc = docData;
+  refreshCurrentUserUi();
+}
+
+function subscribeToCollections(uid) {
+  unsubscribeAll();
+
+  if (!uid) return;
+
+  state.subscriptions.userDoc = onSnapshot(doc(db, 'users', uid), (snapshot) => {
+    const data = snapshot.exists() ? snapshot.data() : {};
+    updateCurrentUserFromDoc(data || {});
+  });
+
+  state.subscriptions.announcements = onSnapshot(
+    query(collection(db, 'announcements'), orderBy('createdAt', 'desc')),
+    (snapshot) => {
+      state.announcements = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...withTimestamps(docSnap.data()) }));
+      renderAnnouncements();
+      renderAnnouncementManage();
+      renderTodaySummary();
+    },
+  );
+
+  state.subscriptions.locations = onSnapshot(collection(db, 'locations'), (snapshot) => {
+    state.locations = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...withTimestamps(docSnap.data()) }));
+    populateLocationFilter();
+    renderTodaySummary();
+  });
+
+  state.subscriptions.staff = onSnapshot(collection(db, 'users'), (snapshot) => {
+    state.staff = snapshot.docs.map((docSnap) => {
+      const data = withTimestamps(docSnap.data());
+      return {
+        id: docSnap.id,
+        ...data,
+        role: (data.role || '').toString().toLowerCase(),
+      };
+    });
+    renderReports();
+  });
+
+  state.subscriptions.reports = onSnapshot(
+    query(collection(db, 'reports'), orderBy('date', 'desc'), limit(200)),
+    (snapshot) => {
+      state.reports = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...withTimestamps(docSnap.data()) }));
+      renderReports();
+      renderTodaySummary();
+    },
+  );
+
+  state.subscriptions.wishes = onSnapshot(collection(db, 'wishes'), (snapshot) => {
+    state.wishes = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...withTimestamps(docSnap.data()) }));
+    renderWishList();
+    renderTodaySummary();
+  });
+
+  state.subscriptions.menu = onSnapshot(doc(db, 'menu', 'data'), (snapshot) => {
+    if (!snapshot.exists()) return;
+    const data = snapshot.data();
+    if (data?.menu) {
+      state.menuPlanner = {
+        ...state.menuPlanner,
+        ...data.menu,
+        templates: { ...state.menuPlanner.templates, ...(data.menu.templates || {}) },
+        history: Array.isArray(data.menu.history) ? data.menu.history : state.menuPlanner.history,
+      };
+      persistMenuPlanner(false);
+    }
+  });
 }
 
 function filterMenuHistory({ start, end }) {
@@ -647,33 +802,40 @@ function openAnnouncementModal(id = null) {
   form.addEventListener('submit', (evt) => {
     evt.preventDefault();
     const data = Object.fromEntries(new FormData(form).entries());
-    if (!data.title.trim() || !data.content.trim()) {
+    const payload = {
+      type: data.type,
+      title: data.title.trim(),
+      content: data.content.trim(),
+      imageUrl: data.imageUrl.trim(),
+    };
+    if (!payload.title || !payload.content) {
       Swal.fire('請完整填寫', '', 'warning');
       return;
     }
-    if (ann) {
-      Object.assign(ann, {
-        type: data.type,
-        title: data.title.trim(),
-        content: data.content.trim(),
-        imageUrl: data.imageUrl.trim(),
-        updatedAt: new Date().toISOString(),
-      });
-    } else {
-      state.announcements.push({
-        id: uuid(),
-        type: data.type,
-        title: data.title.trim(),
-        content: data.content.trim(),
-        imageUrl: data.imageUrl.trim(),
-        createdAt: new Date().toISOString(),
-        updatedAt: null,
-        createdBy: state.currentUser?.id ?? 'system',
-      });
-    }
-    closeModal(modal);
-    renderAnnouncements();
-    renderAnnouncementManage();
+
+    (async () => {
+      try {
+        if (ann) {
+          await updateDoc(doc(db, 'announcements', ann.id), {
+            ...payload,
+            updatedAt: serverTimestamp(),
+            updatedBy: state.currentUser?.id ?? null,
+          });
+          Swal.fire('公告已更新', '', 'success');
+        } else {
+          await addDoc(collection(db, 'announcements'), {
+            ...payload,
+            createdAt: serverTimestamp(),
+            updatedAt: null,
+            createdBy: state.currentUser?.id ?? null,
+          });
+          Swal.fire('公告已新增', '', 'success');
+        }
+        closeModal(modal);
+      } catch (error) {
+        Swal.fire('儲存失敗', mapFirebaseError(error), 'error');
+      }
+    })();
   });
 
   form.querySelector('[data-role="cancel"]').addEventListener('click', () => closeModal(modal));
@@ -686,14 +848,13 @@ function deleteAnnouncement(id) {
     showCancelButton: true,
     confirmButtonText: '刪除',
     confirmButtonColor: '#d33',
-  }).then((result) => {
+  }).then(async (result) => {
     if (!result.isConfirmed) return;
-    const index = state.announcements.findIndex((item) => item.id === id);
-    if (index >= 0) {
-      state.announcements.splice(index, 1);
-      renderAnnouncements();
-      renderAnnouncementManage();
+    try {
+      await deleteDoc(doc(db, 'announcements', id));
       Swal.fire('已刪除', '', 'success');
+    } catch (error) {
+      Swal.fire('刪除失敗', mapFirebaseError(error), 'error');
     }
   });
 }
@@ -1356,17 +1517,35 @@ function openReportModal(id = null) {
       myResponse: (formData.get('myResponse') || '').trim(),
       deliveryNotes: (formData.get('deliveryNotes') || '').trim(),
       menuTemplate,
+    };
+
+    const docPayload = {
+      ...payload,
       menuSnapshot: snapshot ? cloneMenuData(snapshot) : null,
     };
 
-    if (report) {
-      Object.assign(report, payload);
-    } else {
-      state.reports.push({ id: uuid(), createdAt: new Date().toISOString(), ...payload });
-    }
-    closeModal(modal);
-    renderReports();
-    renderTodaySummary();
+    (async () => {
+      try {
+        if (report) {
+          await updateDoc(doc(db, 'reports', report.id), {
+            ...docPayload,
+            updatedAt: serverTimestamp(),
+            updatedBy: state.currentUser?.id ?? null,
+          });
+          Swal.fire('戰報已更新', '', 'success');
+        } else {
+          await addDoc(collection(db, 'reports'), {
+            ...docPayload,
+            createdAt: serverTimestamp(),
+            createdBy: state.currentUser?.id ?? null,
+          });
+          Swal.fire('戰報已建立', '', 'success');
+        }
+        closeModal(modal);
+      } catch (error) {
+        Swal.fire('儲存失敗', mapFirebaseError(error), 'error');
+      }
+    })();
   });
 
   form.querySelector('[data-role="cancel"]').addEventListener('click', () => closeModal(modal));
@@ -1414,17 +1593,16 @@ function deleteReport(id) {
     showCancelButton: true,
     confirmButtonText: '刪除',
     confirmButtonColor: '#d33',
-  }).then((result) => {
+  }).then(async (result) => {
     if (!result.isConfirmed) return false;
-    const index = state.reports.findIndex((item) => item.id === id);
-    if (index >= 0) {
-      state.reports.splice(index, 1);
-      renderReports();
-      renderTodaySummary();
+    try {
+      await deleteDoc(doc(db, 'reports', id));
       Swal.fire('已刪除', '', 'success');
       return true;
+    } catch (error) {
+      Swal.fire('刪除失敗', mapFirebaseError(error), 'error');
+      return false;
     }
-    return false;
   });
 }
 
@@ -1528,17 +1706,40 @@ function showLocationManageModal() {
     form.addEventListener('submit', (evt) => {
       evt.preventDefault();
       const data = Object.fromEntries(new FormData(form).entries());
-      if (!data.name.trim()) {
+      const payload = {
+        name: data.name.trim(),
+        description: data.description.trim(),
+      };
+      if (!payload.name) {
         Swal.fire('請輸入名稱', '', 'warning');
         return;
       }
-      if (location) {
-        Object.assign(location, { name: data.name.trim(), description: data.description.trim() });
-      } else {
-        state.locations.push({ id: uuid(), name: data.name.trim(), description: data.description.trim() });
-      }
-      closeModal(modal);
-      onChange();
+
+      (async () => {
+        try {
+          if (location) {
+            await updateDoc(doc(db, 'locations', location.id), {
+              ...payload,
+              updatedAt: serverTimestamp(),
+              updatedBy: state.currentUser?.id ?? null,
+            });
+            Object.assign(location, payload);
+            Swal.fire('據點已更新', '', 'success');
+          } else {
+            const docRef = await addDoc(collection(db, 'locations'), {
+              ...payload,
+              createdAt: serverTimestamp(),
+              createdBy: state.currentUser?.id ?? null,
+            });
+            state.locations.push({ id: docRef.id, ...payload });
+            Swal.fire('據點已新增', '', 'success');
+          }
+          closeModal(modal);
+          onChange();
+        } catch (error) {
+          Swal.fire('儲存失敗', mapFirebaseError(error), 'error');
+        }
+      })();
     });
     form.querySelector('[data-role="cancel"]').addEventListener('click', () => closeModal(modal));
     form.querySelector('[data-role="delete"]').addEventListener('click', () => {
@@ -1554,15 +1755,18 @@ function showLocationManageModal() {
       showCancelButton: true,
       confirmButtonText: '刪除',
       confirmButtonColor: '#d33',
-    }).then((result) => {
+    }).then(async (result) => {
       if (!result.isConfirmed) return;
-      const index = state.locations.findIndex((item) => item.id === id);
-      if (index >= 0) {
-        state.locations.splice(index, 1);
+      try {
+        await deleteDoc(doc(db, 'locations', id));
+        state.locations = state.locations.filter((item) => item.id !== id);
         onChange();
         populateLocationFilter();
         renderReports();
         renderTodaySummary();
+        Swal.fire('已刪除', '', 'success');
+      } catch (error) {
+        Swal.fire('刪除失敗', mapFirebaseError(error), 'error');
       }
     });
   }
@@ -1786,7 +1990,7 @@ function showMenuEditModal() {
     const template = ensureMenuTemplate(activeDay);
     const { action } = actionBtn.dataset;
     if (action === 'add-item') {
-      template.items.push({ id: uuid(), name: `新商品 ${template.items.length + 1}`, price: 0, defaultQuantity: {}, deliveryTotal: 0 });
+      template.items.push({ id: generateId(), name: `新商品 ${template.items.length + 1}`, price: 0, defaultQuantity: {}, deliveryTotal: 0 });
       template.updatedAt = new Date().toISOString();
       persistMenuPlanner();
       renderTemplateView();
@@ -2180,27 +2384,42 @@ function showStaffManageModal() {
     form.addEventListener('submit', (evt) => {
       evt.preventDefault();
       const formData = Object.fromEntries(new FormData(form).entries());
-      if (!formData.name.trim()) {
+      const payload = {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        role: formData.role,
+      };
+      if (!payload.name) {
         Swal.fire('請輸入姓名', '', 'warning');
         return;
       }
-      if (staff) {
-        Object.assign(staff, {
-          name: formData.name.trim(),
-          email: formData.email.trim(),
-          role: formData.role,
-        });
-      } else {
-        state.staff.push({
-          id: uuid(),
-          name: formData.name.trim(),
-          email: formData.email.trim(),
-          role: formData.role,
-        });
-      }
-      closeModal(modal);
-      render();
-      renderReports();
+
+      (async () => {
+        try {
+          if (staff) {
+            await updateDoc(doc(db, 'users', staff.id), {
+              ...payload,
+              updatedAt: serverTimestamp(),
+              updatedBy: state.currentUser?.id ?? null,
+            });
+            Object.assign(staff, payload);
+            Swal.fire('人員已更新', '', 'success');
+          } else {
+            const docRef = await addDoc(collection(db, 'users'), {
+              ...payload,
+              createdAt: serverTimestamp(),
+              createdBy: state.currentUser?.id ?? null,
+            });
+            state.staff.push({ id: docRef.id, ...payload });
+            Swal.fire('人員已新增', '', 'success');
+          }
+          closeModal(modal);
+          render();
+          renderReports();
+        } catch (error) {
+          Swal.fire('儲存失敗', mapFirebaseError(error), 'error');
+        }
+      })();
     });
 
     form.querySelector('[data-role="cancel"]').addEventListener('click', () => closeModal(modal));
@@ -2221,12 +2440,15 @@ function showStaffManageModal() {
       showCancelButton: true,
       confirmButtonText: '刪除',
       confirmButtonColor: '#d33',
-    }).then((result) => {
+    }).then(async (result) => {
       if (!result.isConfirmed) return;
-      const index = state.staff.findIndex((item) => item.id === id);
-      if (index >= 0) {
-        state.staff.splice(index, 1);
+      try {
+        await deleteDoc(doc(db, 'users', id));
+        state.staff = state.staff.filter((item) => item.id !== id);
         render();
+        Swal.fire('已刪除', '', 'success');
+      } catch (error) {
+        Swal.fire('刪除失敗', mapFirebaseError(error), 'error');
       }
     });
   }
@@ -2299,16 +2521,36 @@ function openWishPoolModal() {
     const { action, id } = button.dataset;
     const wish = state.wishes.find((item) => item.id === id);
     if (!wish) return;
-    if (action === 'vote') {
-      wish.votes += 1;
-    } else if (action === 'toggle') {
-      const order = ['pending', 'approved', 'fulfilled'];
-      const index = order.indexOf(wish.status);
-      wish.status = order[(index + 1) % order.length];
-    } else if (action === 'delete') {
-      state.wishes = state.wishes.filter((item) => item.id !== id);
-    }
-    render();
+    (async () => {
+      try {
+        if (action === 'vote') {
+          const newVotes = (wish.votes || 0) + 1;
+          await updateDoc(doc(db, 'wishes', id), {
+            votes: newVotes,
+            updatedAt: serverTimestamp(),
+            updatedBy: state.currentUser?.id ?? null,
+          });
+          wish.votes = newVotes;
+        } else if (action === 'toggle') {
+          const order = ['pending', 'approved', 'fulfilled'];
+          const index = order.indexOf(wish.status);
+          const nextStatus = order[(index + 1) % order.length];
+          await updateDoc(doc(db, 'wishes', id), {
+            status: nextStatus,
+            updatedAt: serverTimestamp(),
+            updatedBy: state.currentUser?.id ?? null,
+          });
+          wish.status = nextStatus;
+        } else if (action === 'delete') {
+          await deleteDoc(doc(db, 'wishes', id));
+          state.wishes = state.wishes.filter((item) => item.id !== id);
+          Swal.fire('已刪除', '', 'success');
+        }
+        render();
+      } catch (error) {
+        Swal.fire('操作失敗', mapFirebaseError(error), 'error');
+      }
+    })();
   });
 
   form.addEventListener('submit', (evt) => {
@@ -2318,9 +2560,22 @@ function openWishPoolModal() {
       Swal.fire('請輸入願望內容', '', 'warning');
       return;
     }
-    state.wishes.push({ id: uuid(), title, status: 'pending', votes: 0 });
-    form.reset();
-    render();
+    (async () => {
+      try {
+        const docRef = await addDoc(collection(db, 'wishes'), {
+          title,
+          status: 'pending',
+          votes: 0,
+          createdAt: serverTimestamp(),
+          createdBy: state.currentUser?.id ?? null,
+        });
+        state.wishes.push({ id: docRef.id, title, status: 'pending', votes: 0 });
+        form.reset();
+        render();
+      } catch (error) {
+        Swal.fire('新增失敗', mapFirebaseError(error), 'error');
+      }
+    })();
   });
 
   render();
@@ -2398,30 +2653,85 @@ function openShiftForm(date, onSave) {
   form.querySelector('[data-role="cancel"]').addEventListener('click', () => closeModal(modal));
 }
 
-function handleLogin(evt) {
+function mapFirebaseError(error) {
+  if (!error || typeof error !== 'object') return '未知錯誤';
+  const { code, message } = error;
+  const map = {
+    'auth/invalid-email': '電子郵件格式錯誤',
+    'auth/user-disabled': '帳號已停用',
+    'auth/user-not-found': '找不到使用者',
+    'auth/wrong-password': '密碼錯誤',
+    'auth/too-many-requests': '嘗試次數過多，請稍後再試',
+  };
+  return map[code] || message || code || '未知錯誤';
+}
+
+async function handleLogin(evt) {
   evt.preventDefault();
   const email = dom.email.value.trim();
   const password = dom.password.value;
-  const user = MOCK_USERS.find((item) => item.email === email && item.password === password);
-  if (!user) {
-    Swal.fire('登入失敗', '帳號或密碼錯誤', 'error');
+  if (!email || !password) {
+    Swal.fire('請輸入帳號與密碼', '', 'warning');
     return;
   }
-  state.currentUser = { ...user };
-  dom.loginPage.classList.add('hidden');
-  dom.mainSystem.classList.remove('hidden');
-  renderAfterLogin();
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (error) {
+    Swal.fire('登入失敗', mapFirebaseError(error), 'error');
+  }
 }
 
-function renderAfterLogin() {
+function refreshCurrentUserUi() {
   setFeatureVisibility();
   renderLevelInfo();
   renderQuarterIncentive();
   renderUserSummary();
+}
+
+function renderAfterLogin() {
+  refreshCurrentUserUi();
   renderAnnouncements();
   populateLocationFilter();
   renderReports();
   renderTodaySummary();
+  renderWishList();
+}
+
+async function loadCurrentUserProfile(uid) {
+  try {
+    const snapshot = await getDoc(doc(db, 'users', uid));
+    if (snapshot.exists()) {
+      updateCurrentUserFromDoc(snapshot.data());
+    } else {
+      updateCurrentUserFromDoc({});
+    }
+  } catch (error) {
+    console.warn('[auth] load profile failed', error);
+    updateCurrentUserFromDoc({});
+  }
+}
+
+function cleanupAfterLogout() {
+  unsubscribeAll();
+  state.currentUser = null;
+  state.currentUserDoc = null;
+  state.announcements = [];
+  state.reports = [];
+  state.locations = [];
+  state.staff = [];
+  state.wishes = [];
+  dom.loginForm.reset();
+  dom.mainSystem.classList.add('hidden');
+  dom.loginPage.classList.remove('hidden');
+  renderAnnouncements();
+  renderReports();
+  renderTodaySummary();
+  renderWishList();
+  refreshCurrentUserUi();
+  dom.quarterIncentivePanel.textContent = '--';
+  dom.quarterIncentiveBadge.textContent = '';
+  dom.todaySummary.textContent = '--';
+  dom.quickTodayStats.textContent = '--';
 }
 
 function renderTodaySummary() {
@@ -2440,34 +2750,44 @@ function renderTodaySummary() {
     })
     .join('');
 
-  dom.quickTodayStats.textContent = `今日戰報 ${state.reports.length} 筆 · 公告 ${state.announcements.length} 則`;
+  dom.quickTodayStats.textContent = `今日戰報 ${state.reports.length} 筆 · 公告 ${state.announcements.length} 則 · 願望 ${state.wishes.length} 則`;
 }
 
-function handleLogout() {
-  state.currentUser = null;
-  dom.mainSystem.classList.add('hidden');
-  dom.loginPage.classList.remove('hidden');
-  dom.loginForm.reset();
+function renderWishList() {
+  // 主畫面目前無願望列表，保留函式供資料更新時觸發其他視覺同步需求。
+}
+
+async function handleLogout() {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    Swal.fire('登出失敗', mapFirebaseError(error), 'error');
+  }
 }
 
 function showRegisterHint() {
   Swal.fire('提示', '請聯絡管理員建立帳號。', 'info');
 }
 
-function showResetPassword() {
+async function showResetPassword() {
   const email = dom.email.value.trim();
   if (!email) {
     Swal.fire('請先輸入 Email', '', 'warning');
     return;
   }
-  Swal.fire('已寄出重設信', `${email} 請至信箱確認`, 'success');
+  try {
+    await sendPasswordResetEmail(auth, email);
+    Swal.fire('已寄出重設信', `${email} 請至信箱確認`, 'success');
+  } catch (error) {
+    Swal.fire('寄送失敗', mapFirebaseError(error), 'error');
+  }
 }
 
 function quickLogin(role) {
-  const user = MOCK_USERS.find((item) => item.role === role) ?? MOCK_USERS.find((item) => item.role === 'staff');
-  if (!user) return;
-  dom.email.value = user.email;
-  dom.password.value = user.password;
+  const preset = QUICK_LOGIN_PRESETS[role] || QUICK_LOGIN_PRESETS.staff;
+  if (!preset) return;
+  dom.email.value = preset.email;
+  dom.password.value = preset.password;
 }
 
 function exportReportsCsv() {
@@ -2556,6 +2876,190 @@ function bootstrap() {
   initDomRefs();
   initEventBindings();
   renderAnnouncements();
+
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      state.currentUser = {
+        id: user.uid,
+        email: user.email ?? '',
+        displayName: user.displayName || user.email || '',
+        role: state.currentUser?.role ?? 'staff',
+        bv: state.currentUser?.bv ?? 360,
+      };
+      dom.loginPage.classList.add('hidden');
+      dom.mainSystem.classList.remove('hidden');
+      renderAfterLogin();
+      await loadCurrentUserProfile(user.uid);
+      subscribeToCollections(user.uid);
+    } else {
+      cleanupAfterLogout();
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', bootstrap);
+firestore.rules
+新增
++160
+-0
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return signedIn()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid))
+        : null;
+    }
+
+    function userRole(doc) {
+      return doc != null && doc.data.role != null ? doc.data.role : "staff";
+    }
+
+    function role() {
+      return signedIn() ? userRole(userDoc()) : "guest";
+    }
+
+    function isAdmin() {
+      return role() == "admin";
+    }
+
+    function isManager() {
+      return role() in ["admin", "manager", "owner"];
+    }
+
+    function isStaff() {
+      return role() in ["admin", "manager", "owner", "staff"];
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function roleChanged() {
+      return resource != null
+        && "role" in request.resource.data.keys()
+        && request.resource.data.role != resource.data.role;
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if isAdmin()
+                    || (isSelf(uid) && !("role" in request.resource.data.keys()));
+      allow update: if isAdmin()
+                    || (isManager() && !roleChanged())
+                    || (isSelf(uid) && !roleChanged());
+      allow delete: if isAdmin();
+    }
+
+    match /announcements/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if isManager();
+    }
+
+    match /reports/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isAdmin()
+                            || (signedIn() && resource.data.ownerId == request.auth.uid)
+                            || (isManager() && resource.data.ownerId == request.auth.uid);
+    }
+
+    match /shifts/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if isManager();
+    }
+
+    match /locations/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if isManager();
+    }
+
+    match /menu/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if isManager();
+    }
+
+    match /menuRealtime/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if isManager();
+    }
+
+    match /menuDaily/{id} {
+      allow read: if signedIn();
+      allow create, update: if isManager();
+      allow delete: if isAdmin();
+    }
+
+    match /bvRecords/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.creatorUid == request.auth.uid;
+      allow update, delete: if isManager()
+                            || (signedIn() && resource.data.creatorUid == request.auth.uid);
+    }
+
+    match /points/{id} {
+      allow read: if signedIn();
+      allow create: if isManager()
+                     || (signedIn() && request.resource.data.userId == request.auth.uid);
+      allow update, delete: if isManager()
+                            || (signedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /incentives/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if isManager();
+    }
+
+    match /wishes/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isManager()
+                            || (signedIn() && resource.data.creatorUid == request.auth.uid);
+    }
+
+    match /settings/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if isManager();
+    }
+
+    match /supplies/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if isManager();
+    }
+
+    match /pettyCash/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if isManager();
+    }
+
+    match /userDaily/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isManager());
+      match /days/{date} {
+        allow read: if signedIn() && (request.auth.uid == uid || isManager());
+        allow create, update, delete: if (signedIn() && request.auth.uid == uid) || isManager();
+      }
+    }
+
+    match /suppliesList/{id} {
+      allow read: if isAdmin();
+    }
+
+    match /petty_cash/{id} {
+      allow read: if isAdmin();
+    }
+
+    match /inventory/{id} {
+      allow read: if isAdmin();
+    }
+
+    match /menuDefault/{id} {
+      allow read: if isAdmin();
+    }
+  }
+}
