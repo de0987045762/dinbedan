@@ -2898,8 +2898,3 @@ function bootstrap() {
 }
 
 document.addEventListener('DOMContentLoaded', bootstrap);
-firestore.rules
-新增
-+160
--0
-
