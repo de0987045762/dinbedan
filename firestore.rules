@@ -1,160 +1,170 @@
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    function userDoc() {
-      return signedIn()
-        ? get(/databases/$(database)/documents/users/$(request.auth.uid))
-        : null;
-    }
-
-    function userRole(doc) {
-      return doc != null && doc.data.role != null ? doc.data.role : "staff";
-    }
-
-    function role() {
-      return signedIn() ? userRole(userDoc()) : "guest";
-    }
-
-    function isAdmin() {
-      return role() == "admin";
-    }
-
-    function isManager() {
-      return role() in ["admin", "manager", "owner"];
-    }
-
-    function isStaff() {
-      return role() in ["admin", "manager", "owner", "staff"];
-    }
-
-    function isSelf(uid) {
-      return signedIn() && request.auth.uid == uid;
-    }
-
-    function roleChanged() {
-      return resource != null
-        && "role" in request.resource.data.keys()
-        && request.resource.data.role != resource.data.role;
-    }
-
-    match /users/{uid} {
-      allow read: if signedIn();
-      allow create: if isAdmin()
-                    || (isSelf(uid) && !("role" in request.resource.data.keys()));
-      allow update: if isAdmin()
-                    || (isManager() && !roleChanged())
-                    || (isSelf(uid) && !roleChanged());
-      allow delete: if isAdmin();
-    }
-
-    match /announcements/{id} {
-      allow read: if signedIn();
-      allow create, update, delete: if isManager();
-    }
-
-    match /reports/{id} {
-      allow read: if signedIn();
-      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isAdmin()
-                            || (signedIn() && resource.data.ownerId == request.auth.uid)
-                            || (isManager() && resource.data.ownerId == request.auth.uid);
-    }
-
-    match /shifts/{id} {
-      allow read: if signedIn();
-      allow create, update, delete: if isManager();
-    }
-
-    match /locations/{id} {
-      allow read: if signedIn();
-      allow create, update, delete: if isManager();
-    }
-
-    match /menu/{id} {
-      allow read: if signedIn();
-      allow create, update, delete: if isManager();
-    }
-
-    match /menuRealtime/{id} {
-      allow read: if signedIn();
-      allow create, update, delete: if isManager();
-    }
-
-    match /menuDaily/{id} {
-      allow read: if signedIn();
-      allow create, update: if isManager();
-      allow delete: if isAdmin();
-    }
-
-    match /bvRecords/{id} {
-      allow read: if signedIn();
-      allow create: if signedIn() && request.resource.data.creatorUid == request.auth.uid;
-      allow update, delete: if isManager()
-                            || (signedIn() && resource.data.creatorUid == request.auth.uid);
-    }
-
-    match /points/{id} {
-      allow read: if signedIn();
-      allow create: if isManager()
-                     || (signedIn() && request.resource.data.userId == request.auth.uid);
-      allow update, delete: if isManager()
-                            || (signedIn() && resource.data.userId == request.auth.uid);
-    }
-
-    match /incentives/{id} {
-      allow read: if signedIn();
-      allow create, update, delete: if isManager();
-    }
-
-    match /wishes/{id} {
-      allow read: if signedIn();
-      allow create: if signedIn();
-      allow update, delete: if isManager()
-                            || (signedIn() && resource.data.creatorUid == request.auth.uid);
-    }
-
-    match /settings/{id} {
-      allow read: if signedIn();
-      allow create, update, delete: if isManager();
-    }
-
-    match /supplies/{id} {
-      allow read: if signedIn();
-      allow create, update, delete: if isManager();
-    }
-
-    match /pettyCash/{id} {
-      allow read: if signedIn();
-      allow create, update, delete: if isManager();
-    }
-
-    match /userDaily/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isManager());
-      match /days/{date} {
-        allow read: if signedIn() && (request.auth.uid == uid || isManager());
-        allow create, update, delete: if (signedIn() && request.auth.uid == uid) || isManager();
-      }
-    }
-
-    match /suppliesList/{id} {
-      allow read: if isAdmin();
-    }
-
-    match /petty_cash/{id} {
-      allow read: if isAdmin();
-    }
-
-    match /inventory/{id} {
-      allow read: if isAdmin();
-    }
-
-    match /menuDefault/{id} {
-      allow read: if isAdmin();
-    }
-  }
-}
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/firestore.rules b/firestore.rules
+new file mode 100644
+index 0000000000000000000000000000000000000000..4145943d3c497854b0ca47e06cf92e6b6548ff4d
+--- /dev/null
++++ b/firestore.rules
+@@ -0,0 +1,160 @@
++rules_version = '2';
++service cloud.firestore {
++  match /databases/{database}/documents {
++
++    function signedIn() {
++      return request.auth != null;
++    }
++
++    function userDoc() {
++      return signedIn()
++        ? get(/databases/$(database)/documents/users/$(request.auth.uid))
++        : null;
++    }
++
++    function userRole(doc) {
++      return doc != null && doc.data.role != null ? doc.data.role : "staff";
++    }
++
++    function role() {
++      return signedIn() ? userRole(userDoc()) : "guest";
++    }
++
++    function isAdmin() {
++      return role() == "admin";
++    }
++
++    function isManager() {
++      return role() in ["admin", "manager", "owner"];
++    }
++
++    function isStaff() {
++      return role() in ["admin", "manager", "owner", "staff"];
++    }
++
++    function isSelf(uid) {
++      return signedIn() && request.auth.uid == uid;
++    }
++
++    function roleChanged() {
++      return resource != null
++        && "role" in request.resource.data.keys()
++        && request.resource.data.role != resource.data.role;
++    }
++
++    match /users/{uid} {
++      allow read: if signedIn();
++      allow create: if isAdmin()
++                    || (isSelf(uid) && !("role" in request.resource.data.keys()));
++      allow update: if isAdmin()
++                    || (isManager() && !roleChanged())
++                    || (isSelf(uid) && !roleChanged());
++      allow delete: if isAdmin();
++    }
++
++    match /announcements/{id} {
++      allow read: if signedIn();
++      allow create, update, delete: if isManager();
++    }
++
++    match /reports/{id} {
++      allow read: if signedIn();
++      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
++      allow update, delete: if isAdmin()
++                            || (signedIn() && resource.data.ownerId == request.auth.uid)
++                            || (isManager() && resource.data.ownerId == request.auth.uid);
++    }
++
++    match /shifts/{id} {
++      allow read: if signedIn();
++      allow create, update, delete: if isManager();
++    }
++
++    match /locations/{id} {
++      allow read: if signedIn();
++      allow create, update, delete: if isManager();
++    }
++
++    match /menu/{id} {
++      allow read: if signedIn();
++      allow create, update, delete: if isManager();
++    }
++
++    match /menuRealtime/{id} {
++      allow read: if signedIn();
++      allow create, update, delete: if isManager();
++    }
++
++    match /menuDaily/{id} {
++      allow read: if signedIn();
++      allow create, update: if isManager();
++      allow delete: if isAdmin();
++    }
++
++    match /bvRecords/{id} {
++      allow read: if signedIn();
++      allow create: if signedIn() && request.resource.data.creatorUid == request.auth.uid;
++      allow update, delete: if isManager()
++                            || (signedIn() && resource.data.creatorUid == request.auth.uid);
++    }
++
++    match /points/{id} {
++      allow read: if signedIn();
++      allow create: if isManager()
++                     || (signedIn() && request.resource.data.userId == request.auth.uid);
++      allow update, delete: if isManager()
++                            || (signedIn() && resource.data.userId == request.auth.uid);
++    }
++
++    match /incentives/{id} {
++      allow read: if signedIn();
++      allow create, update, delete: if isManager();
++    }
++
++    match /wishes/{id} {
++      allow read: if signedIn();
++      allow create: if signedIn();
++      allow update, delete: if isManager()
++                            || (signedIn() && resource.data.creatorUid == request.auth.uid);
++    }
++
++    match /settings/{id} {
++      allow read: if signedIn();
++      allow create, update, delete: if isManager();
++    }
++
++    match /supplies/{id} {
++      allow read: if signedIn();
++      allow create, update, delete: if isManager();
++    }
++
++    match /pettyCash/{id} {
++      allow read: if signedIn();
++      allow create, update, delete: if isManager();
++    }
++
++    match /userDaily/{uid} {
++      allow read: if signedIn() && (request.auth.uid == uid || isManager());
++      match /days/{date} {
++        allow read: if signedIn() && (request.auth.uid == uid || isManager());
++        allow create, update, delete: if (signedIn() && request.auth.uid == uid) || isManager();
++      }
++    }
++
++    match /suppliesList/{id} {
++      allow read: if isAdmin();
++    }
++
++    match /petty_cash/{id} {
++      allow read: if isAdmin();
++    }
++
++    match /inventory/{id} {
++      allow read: if isAdmin();
++    }
++
++    match /menuDefault/{id} {
++      allow read: if isAdmin();
++    }
++  }
++}
+ 
+EOF
+)
