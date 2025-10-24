@@ -1,0 +1,60 @@
+
+body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",Arial,sans-serif;}
+.report-card{position:relative;border:1px solid #e2e8f0;background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 4px rgba(0,0,0,.06);transition:.25s;cursor:pointer;}
+.report-card:hover{box-shadow:0 4px 14px -2px rgba(0,0,0,.15);transform:translateY(-2px);}
+.badge-small{font-size:10px;line-height:1;padding:3px 6px;border-radius:6px;font-weight:600;display:inline-flex;align-items:center;gap:3px;}
+.badge-target{background:#ecfdf5;color:#047857;border:1px solid #6ee7b7;}
+.badge-exceed{background:#f0f9ff;color:#0369a1;border:1px solid #7dd3fc;}
+.badge-new{background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;}
+.delete-btn-report{position:absolute;right:8px;bottom:8px;font-size:11px;padding:4px 8px;background:#fee2e2;color:#b91c1c;border-radius:6px;display:none;}
+.report-card:hover .delete-btn-report{display:inline-block;}
+.menu-day-btn.active{background:#2563eb !important;color:#fff !important;}
+.progress-bar-bg{height:6px;background:#e5e7eb;border-radius:4px;overflow:hidden;}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,#3b82f6,#6366f1);width:0;transition:width .4s;}
+.incentive-badge{font-size:10px;padding:2px 6px;border-radius:999px;font-weight:600;display:inline-block;}
+.incentive-ok{background:#dcfce7;color:#166534;border:1px solid #86efac;}
+.incentive-progress{background:#fff7ed;color:#9a3412;border:1px solid #fdba74;}
+.announcement-item{border-left:4px solid #6366f1;background:#fff;border-radius:8px;padding:12px;box-shadow:0 1px 2px rgba(0,0,0,.06);}
+.kanban-grid{display:grid;gap:14px;}
+@media(min-width:640px){.kanban-grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));}}
+.summary-tile{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);}
+.swal2-container{z-index:3000!important;}
+.hidden{display:none;}
+.point-pill{background:#f1f5ff;color:#1e3a8a;font-size:11px;padding:2px 6px;border-radius:12px;display:inline-block;font-weight:600;}
+.wish-card{border:1px solid #e2e8f0;background:#fff;border-radius:12px;padding:12px;position:relative;box-shadow:0 1px 2px rgba(0,0,0,.05);transition:.2s;}
+.wish-card:hover{box-shadow:0 4px 10px -2px rgba(0,0,0,.12);}
+.wish-status{font-size:10px;padding:2px 6px;border-radius:8px;font-weight:600;display:inline-block;}
+.wish-pending{background:#fef9c3;color:#854d0e;border:1px solid #fde68a;}
+.wish-approved{background:#e0f2fe;color:#075985;border:1px solid #bae6fd;}
+.wish-fulfilled{background:#dcfce7;color:#166534;border:1px solid #86efac;}
+.wish-rejected{background:#fee2e2;color:#991b1b;border:1px solid #fecaca;}
+.vote-btn{font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #94a3b8;background:#f8fafc;cursor:pointer;display:inline-flex;align-items:center;gap:4px;}
+.vote-btn.active{background:#1d4ed8;color:#fff;border-color:#1d4ed8;}
+.schedule-calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+.schedule-day{background:#fff;border:1px solid #e2e8f0;border-radius:10px;min-height:120px;padding:6px;position:relative;display:flex;flex-direction:column;}
+.schedule-day header{font-size:10px;font-weight:600;color:#475569;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.shift-badge{font-size:10px;padding:2px 4px;border-radius:4px;display:inline-block;margin:2px 0;font-weight:600;line-height:1.1;}
+.shift-MORNING{background:#e0f2fe;color:#0369a1;}
+.shift-LUNCH{background:#fef9c3;color:#854d0e;}
+.shift-FULL{background:#dcfce7;color:#166534;}
+.shift-REST{background:#f1f5f9;color:#64748b;text-decoration:line-through;}
+.schedule-today{outline:2px solid #6366f1;}
+.schedule-empty{flex:1;font-size:10px;color:#cbd5e1;display:flex;align-items:center;justify-content:center;}
+.edit-btn-report{position:absolute;right:8px;top:8px;font-size:11px;padding:3px 7px;background:#e0f2fe;color:#075985;border-radius:6px;display:none;}
+.report-card:hover .edit-btn-report{display:inline-block;}
+.modal-title{font-size:1.125rem;font-weight:600;color:#1f2937;}
+.modal-subtitle{font-size:.75rem;color:#6b7280;}
+.table{width:100%;border-collapse:separate;border-spacing:0 .5rem;}
+.table tbody tr{background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.05);}
+.table tbody td,.table thead th{padding:.75rem 1rem;text-align:left;}
+.table thead th{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;}
+.badge{display:inline-flex;align-items:center;justify-content:center;padding:.25rem .5rem;border-radius:9999px;font-size:.75rem;font-weight:600;}
+.badge-admin{background:#fee2e2;color:#b91c1c;}
+.badge-manager{background:#e0f2fe;color:#0369a1;}
+.badge-staff{background:#ecfdf5;color:#047857;}
+.tooltip{position:relative;display:inline-block;}
+.tooltip .tooltip-text{visibility:hidden;width:120px;background:#111827;color:#fff;text-align:center;border-radius:6px;padding:5px 8px;position:absolute;z-index:1;bottom:125%;left:50%;transform:translateX(-50%);opacity:0;transition:opacity .2s;}
+.tooltip:hover .tooltip-text{visibility:visible;opacity:1;}
+#reportsContainer .report-card{cursor:default;}
+#reportsContainer .report-card .actions{opacity:0;transition:opacity .2s;}
+#reportsContainer .report-card:hover .actions{opacity:1;}
