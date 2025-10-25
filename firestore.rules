@@ -1,10 +1,4 @@
- (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
-diff --git a/firestore.rules b/firestore.rules
-new file mode 100644
-index 0000000000000000000000000000000000000000..4145943d3c497854b0ca47e06cf92e6b6548ff4d
---- /dev/null
-+++ b/firestore.rules
-@@ -0,0 +1,160 @@
+
 +rules_version = '2';
 +service cloud.firestore {
 +  match /databases/{database}/documents {
