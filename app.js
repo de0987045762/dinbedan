@@ -2545,6 +2545,11 @@ function showStaffManageModal() {
     form.className = 'space-y-3';
     form.innerHTML = `
       <input type="hidden" name="id" />
+      <div data-role="uid-row">
+        <label class="text-xs text-gray-500">Firebase UID</label>
+        <input type="text" name="uid" required class="w-full border rounded px-3 py-2 text-sm" placeholder="請貼上 Firebase Authentication 的 UID" />
+        <p class="text-[11px] text-gray-400 mt-1">登入 Firebase Console &gt; Authentication 取得使用者 UID。</p>
+      </div>
       <div>
         <label class="text-xs text-gray-500">姓名</label>
         <input type="text" name="name" required class="w-full border rounded px-3 py-2 text-sm" />
@@ -2585,12 +2590,21 @@ function showStaffManageModal() {
 
     const staff = id ? state.staff.find((item) => item.id === id) : null;
     const canConfigureFeatures = state.currentUser?.role === 'admin' || isSuperAdminEmail(state.currentUser?.email);
+    const uidRow = form.querySelector('[data-role="uid-row"]');
+    const uidInput = form.querySelector('input[name="uid"]');
     if (staff) {
       form.id.value = staff.id;
+      uidInput.value = staff.id;
+      uidInput.disabled = true;
+      uidRow.classList.add('opacity-60');
       form.name.value = staff.name;
       form.email.value = staff.email;
       form.role.value = staff.role;
       form.querySelector('[data-role="delete"]').classList.remove('hidden');
+    } else {
+      uidInput.disabled = false;
+      uidInput.value = '';
+      uidRow.classList.remove('opacity-60');
     }
 
     const featureInputs = Array.from(form.querySelectorAll('input[name="featureAccess"]'));
@@ -2624,23 +2638,36 @@ function showStaffManageModal() {
 
     form.addEventListener('submit', (evt) => {
       evt.preventDefault();
-      const formData = Object.fromEntries(new FormData(form).entries());
+      const formData = new FormData(form);
       const payload = {
-        name: formData.name.trim(),
-        email: formData.email.trim(),
-        role: formData.role,
+        name: (formData.get('name') || '').trim(),
+        email: (formData.get('email') || '').trim(),
+        role: formData.get('role'),
       };
       if (!payload.name) {
         Swal.fire('請輸入姓名', '', 'warning');
         return;
       }
+      if (!payload.role) {
+        Swal.fire('請選擇角色', '', 'warning');
+        return;
+      }
 
+      const uidValue = staff ? staff.id : (formData.get('uid') || '').trim();
+      if (!uidValue) {
+        Swal.fire('請輸入 Firebase UID', '', 'warning');
+        return;
+      }
+
+      const defaultFeatureKeys = getDefaultFeatureKeys(payload.role);
       let selectedFeatures;
       if (canConfigureFeatures) {
         selectedFeatures = sanitizeFeatureSelection(
           featureInputs.filter((input) => input.checked).map((input) => input.value),
         );
-        payload.featureAccess = selectedFeatures;
+        payload.featureAccess = selectedFeatures.length ? selectedFeatures : defaultFeatureKeys;
+      } else if (!staff) {
+        payload.featureAccess = defaultFeatureKeys;
       }
 
       (async () => {
@@ -2657,15 +2684,25 @@ function showStaffManageModal() {
             }
             Swal.fire('人員已更新', '', 'success');
           } else {
-            const docRef = await addDoc(collection(db, 'users'), {
-              ...payload,
-              createdAt: serverTimestamp(),
-              createdBy: state.currentUser?.id ?? null,
-            });
+            const effectiveFeatures = (payload.featureAccess && payload.featureAccess.length)
+              ? payload.featureAccess
+              : defaultFeatureKeys;
+            await setDoc(
+              doc(db, 'users', uidValue),
+              {
+                ...payload,
+                featureAccess: effectiveFeatures,
+                createdAt: serverTimestamp(),
+                createdBy: state.currentUser?.id ?? null,
+                updatedAt: serverTimestamp(),
+                updatedBy: state.currentUser?.id ?? null,
+              },
+              { merge: true },
+            );
             state.staff.push({
-              id: docRef.id,
+              id: uidValue,
               ...payload,
-              featureAccess: selectedFeatures || [],
+              featureAccess: effectiveFeatures,
             });
             Swal.fire('人員已新增', '', 'success');
           }
@@ -2922,6 +2959,7 @@ function mapFirebaseError(error) {
       'Firebase 專案尚未啟用 Email/Password 登入或認證設定尚未完成，請在 Firebase Console > Authentication 中啟用 Email/Password 登入方式。',
     'auth/invalid-api-key': 'Firebase API Key 無效，請確認 app.js 中的 firebaseConfig。',
     'auth/network-request-failed': '網路連線異常，請確認裝置的網路狀態後再試。',
+    'permission-denied': '權限不足，請確認帳號角色與功能設定。',
   };
   return map[code] || message || code || '未知錯誤';
 }
@@ -2961,51 +2999,54 @@ async function loadCurrentUserProfile(uid) {
   try {
     const docRef = doc(db, 'users', uid);
     const snapshot = await getDoc(docRef);
-    const isSuperAdmin = isSuperAdminEmail(state.currentUser?.email);
-    if (snapshot.exists()) {
-      const data = snapshot.data() || {};
-      if (isSuperAdmin) {
-        const updates = {};
-        if ((data.role || '').toString().toLowerCase() !== 'admin') {
-          updates.role = 'admin';
-        }
-        const sanitizedFeatures = sanitizeFeatureSelection(data.featureAccess);
-        const fullFeatureKeys = FEATURE_ENTRIES.map((entry) => entry.key);
-        const hasAllFeatures =
-          sanitizedFeatures.length === fullFeatureKeys.length &&
-          fullFeatureKeys.every((key) => sanitizedFeatures.includes(key));
-        if (!hasAllFeatures) {
-          updates.featureAccess = fullFeatureKeys;
-        }
-        if (Object.keys(updates).length) {
-          updates.updatedAt = serverTimestamp();
-          updates.updatedBy = uid;
-          await setDoc(docRef, updates, { merge: true });
-          Object.assign(data, updates);
-        }
-      }
-      updateCurrentUserFromDoc(data);
+    const email = state.currentUser?.email ?? '';
+    const displayName = state.currentUser?.displayName ?? '';
+    const isSuperAdmin = isSuperAdminEmail(email);
+    let data = snapshot.exists() ? snapshot.data() || {} : {};
+
+    const defaultRole = isSuperAdmin ? 'admin' : 'staff';
+    const fullFeatureKeys = FEATURE_ENTRIES.map((entry) => entry.key);
+    const defaultFeatures = isSuperAdmin ? fullFeatureKeys : getDefaultFeatureKeys(defaultRole);
+
+    const payload = {};
+    if (!snapshot.exists()) {
+      payload.createdAt = serverTimestamp();
+      payload.createdBy = uid;
+      payload.role = defaultRole;
+      payload.featureAccess = defaultFeatures;
+      if (email) payload.email = email;
+      if (displayName) payload.displayName = displayName;
     } else {
-      const data = {};
-      if (isSuperAdmin) {
-        const fullFeatureKeys = FEATURE_ENTRIES.map((entry) => entry.key);
-        await setDoc(
-          docRef,
-          {
-            role: 'admin',
-            email: state.currentUser?.email ?? '',
-            displayName: state.currentUser?.displayName ?? '',
-            featureAccess: fullFeatureKeys,
-            createdAt: serverTimestamp(),
-            createdBy: uid,
-          },
-          { merge: true },
-        );
-        data.role = 'admin';
-        data.featureAccess = fullFeatureKeys;
-      }
-      updateCurrentUserFromDoc(data);
+      if (!data.email && email) payload.email = email;
+      if (!data.displayName && displayName) payload.displayName = displayName;
     }
+
+    if (isSuperAdmin) {
+      if ((data.role || '').toString().toLowerCase() !== 'admin') {
+        payload.role = 'admin';
+      }
+      const sanitizedFeatures = sanitizeFeatureSelection(data.featureAccess);
+      const hasAllFeatures =
+        sanitizedFeatures.length === fullFeatureKeys.length &&
+        fullFeatureKeys.every((key) => sanitizedFeatures.includes(key));
+      if (!hasAllFeatures) {
+        payload.featureAccess = fullFeatureKeys;
+      }
+    } else if (!snapshot.exists() && !payload.featureAccess) {
+      payload.featureAccess = defaultFeatures;
+    }
+
+    if (Object.keys(payload).length) {
+      payload.updatedAt = serverTimestamp();
+      payload.updatedBy = uid;
+      await setDoc(docRef, payload, { merge: true });
+      if (payload.role) data.role = payload.role;
+      if (payload.featureAccess) data.featureAccess = payload.featureAccess;
+      if (payload.email) data.email = payload.email;
+      if (payload.displayName) data.displayName = payload.displayName;
+    }
+
+    updateCurrentUserFromDoc(data);
   } catch (error) {
     console.warn('[auth] load profile failed', error);
     updateCurrentUserFromDoc({});
