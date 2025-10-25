@@ -1,12 +1,15 @@
-import { initializeApp } from 'firebase/app';
-import { getAnalytics } from 'firebase/analytics';
+// ✅ 正確的 Firebase CDN 版本 import（可直接用在瀏覽器 GitHub Pages）
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-analytics.js";
+
 import {
   getAuth,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
-} from 'firebase/auth';
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+
 import {
   getFirestore,
   collection,
@@ -21,14 +24,15 @@ import {
   orderBy,
   limit,
   serverTimestamp,
-} from 'firebase/firestore';
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
 import {
   getStorage,
   ref as storageRef,
   uploadBytes,
   getDownloadURL,
   deleteObject,
-} from 'firebase/storage';
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: 'AIzaSyAReTBGcVEi6JC0gRZWS110ePOv8kJ_hm0',
