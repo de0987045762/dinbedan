@@ -1,58 +1,41 @@
-# dinbedan
+# Firebase 戰報管理示範
 
-本專案提供一個以純前端方式模擬 Firebase 戰報系統的互動介面，支援登入、公告、戰報、菜單、據點、人員與許願池等管理功能。所有資料皆儲存在記憶體中，方便在無後端環境下演示功能流程。
+這個專案提供最簡化的 Firebase 前端示範，登入後可以直接在 Firestore 讀取與寫入公告、據點與戰報資料。主要目標是讓指定的超級管理員帳號 `k987045762@gmail.com` 具有完整權限，其他帳號一律視為員工，僅能新增戰報與瀏覽資料。
 
-## 功能亮點
+## 立即試用
 
-- **戰報管理總覽**：提供日期、據點、員工、狀態、關鍵字與金額區間等進階篩選，支援批次刪除與 CSV 匯出，能即時檢視統計資訊。
-- **戰報編輯表單**：整合實收、售出、剩餘、折扣、電子支付與未入帳欄位，可勾選徽章並引用菜單快照，方便回顧每日營運重點。
-- **菜單規劃器**：以週為單位維護預設菜單，可記錄每日歷史、列印、統計外送與各據點數量，並針對品項提供排序與快速輸入。
-- **菜單歷史統計**：依日期篩選歷史紀錄，計算每日、每週與每月的出餐量總合，可列印或套用回指定日期。
-
-更多細節可於登入後的介面中直接體驗。
-
-## 快速開始
-
-1. 於專案根目錄啟動任何靜態伺服器，例如：
+1. 於專案目錄啟動任何靜態伺服器，例如：
 
    ```bash
    npx http-server .
    ```
 
-2. 造訪輸出的網址（預設為 <http://127.0.0.1:8080>），即可看到登入畫面。
+2. 開啟瀏覽器造訪顯示的網址 (預設為 <http://127.0.0.1:8080>)。
+3. 使用 Firebase Console 建立 Email/Password 帳號，並啟用 Email/Password 登入方式。若未啟用，登入時會看到 `auth/configuration-not-found` 錯誤。
+4. 使用實際的 Firebase 帳號登入。當登入的 Email 為 `k987045762@gmail.com` 時，系統會自動在 `users/{uid}` 文件寫入 `role: "admin"`，並顯示所有新增/刪除按鈕。其他帳號一律為 `role: "staff"`。
 
-3. 於 Firebase Console > Authentication > Sign-in method 啟用 **Email/Password** 登入，否則會出現 `auth/configuration-not-found` 錯誤。
+## 功能說明
 
-4. 可使用下列示範帳號登入：
+- **公告管理 (管理員專用)**：新增公告、即時監聽 Firestore 並顯示最新內容，支援刪除。
+- **據點管理 (管理員專用)**：建立營運據點並同步更新給戰報表單使用。
+- **戰報**：所有登入者皆可新增戰報。管理員可以刪除任何戰報，員工僅能刪除自己提交的紀錄。
+- **即時監聽**：畫面上的公告、據點與戰報列表皆透過 `onSnapshot` 監聽 Firestore，即時反映資料變更。
 
-   | 角色   | Email                 | 密碼      |
-   | ------ | -------------------- | --------- |
-   | 管理員 | `admin@example.com`  | `password` |
-   | 經理   | `manager@example.com`| `password` |
-   | 員工   | `staff@example.com`  | `password` |
+## Firestore 規則
 
-登入後即可測試新增、編輯、刪除與篩選等操作。若要回到登入畫面，可使用右上角的「登出」按鈕。
+範例規則檔位於 `firestore.rules`，重點包含：
 
-> 若仍然看到 `Firebase: Error (auth/configuration-not-found)`，請再次確認 Email/Password 登入方式已啟用，並重新整理頁面後再試。
+- 以 Email 判斷超級管理員 (`k987045762@gmail.com`) 並賦予 `isAdmin()` 權限。
+- 允許超級管理員建立/更新任何使用者檔案與資料集合。
+- 員工可以讀取所有資料、建立自己的戰報並刪除本人資料。
 
-## 菜單規劃與歷史
+部署至 Firebase 前，可先在 Firebase Console 的 Rules Simulator 測試不同 Email 與角色的讀寫情境。
 
-1. 進入「菜單管理」，選擇欲調整的星期，輸入各據點數量與外送份數；資料會即時儲存於瀏覽器。
-2. 點擊「記錄今日菜單」可保存快照至歷史，並於「歷史紀錄 / 統計」分頁檢視。
-3. 歷史分頁可依日期篩選並檢視每日、每週、每月合計，亦可列印、套用或刪除指定紀錄。
+## 檔案結構
 
-## 戰報管理技巧
+- `index.html`：登入畫面與資料管理 UI。
+- `styles.css`：簡易佈景與按鈕樣式。
+- `app.js`：Firebase 初始化、登入流程、Firestore 讀寫與監聽邏輯。
+- `firestore.rules`：對應的 Firestore 安全性規則。
 
-1. 於主畫面點選「戰報管理」開啟總覽，即可依多種條件載入戰報列表。
-2. 列表支援批次勾選刪除與 CSV 匯出，表格上方會即時統計總實收、平均實收、總售出與剩餘量。
-3. 點擊「查看」可檢視完整戰報與菜單快照，「編輯」則會載入原表單供更新。
-
-## GitHub Pages Deployment
-
-This repository ships with a GitHub Actions workflow (`.github/workflows/deploy.yml`) that builds the static assets and publishes them to GitHub Pages.  The workflow:
-
-- Uploads the site files from the `dist/` directory as a Pages artifact.
-- Uses the latest `actions/deploy-pages@v4` action to publish the artifact.
-- Skips the deploy step if the workflow run has already been cancelled so that cancelled runs do not fail while attempting to cancel a finished deployment.
-
-If you trigger multiple builds quickly, only the newest run will continue and older runs will exit cleanly without raising the `Cancelling pages deployment failed` error.
+若需擴充功能 (例如菜單或更多欄位)，可以在 `app.js` 中新增表單欄位並依需求調整 Firestore 規則即可。
