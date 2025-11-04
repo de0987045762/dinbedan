@@ -137,6 +137,11 @@ button.primary {
   color: var(--primary-text);
 }
 
+button.secondary {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
 button.danger {
   background: var(--danger);
   color: var(--danger-text);
@@ -232,8 +237,12 @@ button:disabled {
 }
 
 .table td.actions {
-  width: 120px;
+  width: 160px;
   text-align: center;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .feature-grid {
@@ -282,6 +291,16 @@ button:disabled {
   margin-right: 8px;
   font-size: 0.85rem;
   padding: 6px 10px;
+}
+
+.actions button:last-child {
+  margin-right: 0;
+}
+
+.list li .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .hint {
