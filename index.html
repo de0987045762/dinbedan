@@ -50,7 +50,80 @@
         </div>
       </header>
 
+      <section class="card quick-stats" aria-label="儀表板概況">
+        <div class="stat">
+          <span class="stat-label">戰報筆數</span>
+          <span class="stat-value" id="statTotalReports">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">本月營收總額</span>
+          <span class="stat-value" id="statMonthlySales">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">菜單品項紀錄</span>
+          <span class="stat-value" id="statMenuEntries">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">登入人數</span>
+          <span class="stat-value" id="statStaffCount">0</span>
+        </div>
+      </section>
+
       <p id="statusMessage" class="status" aria-live="polite"></p>
+
+      <section class="card" id="staffManagementCard" data-admin-only>
+        <h3>人員管理</h3>
+        <p class="hint">僅需輸入 Firebase Authentication 的 UID 與電子郵件，即可設定角色與可見功能。</p>
+        <form id="staffForm" class="form-grid">
+          <div class="form-grid two-column">
+            <label>
+              使用者 UID
+              <input id="staffUid" type="text" placeholder="Auth UID" required />
+            </label>
+            <label>
+              電子郵件
+              <input id="staffEmail" type="email" placeholder="example@mail.com" required />
+            </label>
+            <label>
+              顯示名稱
+              <input id="staffName" type="text" placeholder="顯示在系統中的名稱" />
+            </label>
+            <label>
+              角色
+              <select id="staffRole" required>
+                <option value="staff">員工</option>
+                <option value="manager">主管</option>
+                <option value="admin">管理員</option>
+              </select>
+            </label>
+          </div>
+          <fieldset class="feature-grid">
+            <legend>功能權限</legend>
+            <label><input type="checkbox" value="reports" name="staffFeature" />戰報</label>
+            <label><input type="checkbox" value="menu" name="staffFeature" />菜單管理</label>
+            <label><input type="checkbox" value="schedule" name="staffFeature" />排班</label>
+            <label><input type="checkbox" value="wishes" name="staffFeature" />許願池</label>
+            <label><input type="checkbox" value="store" name="staffFeature" />點數商城</label>
+          </fieldset>
+          <div class="form-inline">
+            <button type="submit" class="primary">儲存人員資料</button>
+            <button type="button" id="staffFormReset" class="link">清除欄位</button>
+            <button type="button" id="staffDeleteButton" class="danger hidden">刪除此人員資料</button>
+          </div>
+        </form>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>姓名</th>
+              <th>電子郵件</th>
+              <th>角色</th>
+              <th>功能權限</th>
+              <th class="actions">操作</th>
+            </tr>
+          </thead>
+          <tbody id="staffTableBody"></tbody>
+        </table>
+      </section>
 
       <section class="card">
         <h3>公告</h3>
@@ -77,7 +150,7 @@
         <ul id="locationList" class="list"></ul>
       </section>
 
-      <section class="card">
+      <section class="card" data-feature="reports">
         <h3>戰報</h3>
         <form id="reportForm" class="form-grid">
           <label>
@@ -114,7 +187,7 @@
         </table>
       </section>
 
-      <section class="card">
+      <section class="card" data-feature="menu">
         <h3>菜單管理</h3>
         <form id="menuForm" class="form-grid">
           <label>
@@ -154,7 +227,7 @@
         </table>
       </section>
 
-      <section class="card">
+      <section class="card" data-feature="schedule">
         <h3>排班</h3>
         <form id="scheduleForm" class="form-grid">
           <label>
@@ -163,7 +236,7 @@
           </label>
           <label>
             人員名稱
-            <input id="scheduleStaff" type="text" placeholder="輸入員工姓名" required />
+            <input id="scheduleStaff" type="text" list="staffOptions" placeholder="輸入員工姓名" required />
           </label>
           <label>
             班別
@@ -180,6 +253,7 @@
           </label>
           <button type="submit" class="primary">新增班表</button>
         </form>
+        <datalist id="staffOptions"></datalist>
         <table class="table">
           <thead>
             <tr>
@@ -194,7 +268,7 @@
         </table>
       </section>
 
-      <section class="card">
+      <section class="card" data-feature="wishes">
         <h3>許願池</h3>
         <form id="wishForm" class="form-grid">
           <label>
@@ -210,7 +284,7 @@
         <ul id="wishList" class="list"></ul>
       </section>
 
-      <section class="card">
+      <section class="card" data-feature="store">
         <h3>點數商城</h3>
         <form id="storeForm" class="form-grid">
           <label>
