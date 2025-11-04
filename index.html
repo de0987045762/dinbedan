@@ -136,7 +136,10 @@
             內容
             <textarea name="content" rows="3" required></textarea>
           </label>
-          <button type="submit" class="primary">新增公告</button>
+          <div class="form-inline">
+            <button type="submit" class="primary" id="announcementSubmit">新增公告</button>
+            <button type="button" id="announcementCancel" class="link hidden">取消編輯</button>
+          </div>
         </form>
         <ul id="announcementList" class="list"></ul>
       </section>
@@ -145,7 +148,8 @@
         <h3>據點</h3>
         <form id="locationForm" class="form-inline" data-admin-only>
           <input id="locationName" type="text" placeholder="輸入據點名稱" required />
-          <button type="submit" class="primary">新增</button>
+          <button type="submit" class="primary" id="locationSubmit">新增據點</button>
+          <button type="button" id="locationCancel" class="link hidden">取消編輯</button>
         </form>
         <ul id="locationList" class="list"></ul>
       </section>
@@ -169,7 +173,10 @@
             備註
             <textarea id="reportNotes" rows="3" placeholder="可輸入重點或描述"></textarea>
           </label>
-          <button type="submit" class="primary">新增戰報</button>
+          <div class="form-inline">
+            <button type="submit" class="primary" id="reportSubmit">新增戰報</button>
+            <button type="button" id="reportCancel" class="link hidden">取消編輯</button>
+          </div>
         </form>
         <datalist id="locationOptions"></datalist>
         <table class="table">
@@ -210,7 +217,10 @@
             備註
             <textarea id="menuNotes" rows="2" placeholder="可記錄每日菜單狀況"></textarea>
           </label>
-          <button type="submit" class="primary">新增菜單紀錄</button>
+          <div class="form-inline">
+            <button type="submit" class="primary" id="menuSubmit">新增菜單紀錄</button>
+            <button type="button" id="menuCancel" class="link hidden">取消編輯</button>
+          </div>
         </form>
         <table class="table">
           <thead>
@@ -251,7 +261,10 @@
             備註
             <textarea id="scheduleNotes" rows="2" placeholder="可填寫工作重點"></textarea>
           </label>
-          <button type="submit" class="primary">新增班表</button>
+          <div class="form-inline">
+            <button type="submit" class="primary" id="scheduleSubmit">新增班表</button>
+            <button type="button" id="scheduleCancel" class="link hidden">取消編輯</button>
+          </div>
         </form>
         <datalist id="staffOptions"></datalist>
         <table class="table">
@@ -279,7 +292,10 @@
             內容
             <textarea id="wishDescription" rows="3" placeholder="描述願望內容" required></textarea>
           </label>
-          <button type="submit" class="primary">送出願望</button>
+          <div class="form-inline">
+            <button type="submit" class="primary" id="wishSubmit">送出願望</button>
+            <button type="button" id="wishCancel" class="link hidden">取消編輯</button>
+          </div>
         </form>
         <ul id="wishList" class="list"></ul>
       </section>
@@ -299,7 +315,10 @@
             備註
             <textarea id="storeNotes" rows="2" placeholder="可填寫點數或其他需求"></textarea>
           </label>
-          <button type="submit" class="primary">提出兌換申請</button>
+          <div class="form-inline">
+            <button type="submit" class="primary" id="storeSubmit">提出兌換申請</button>
+            <button type="button" id="storeCancel" class="link hidden">取消編輯</button>
+          </div>
         </form>
         <table class="table">
           <thead>
