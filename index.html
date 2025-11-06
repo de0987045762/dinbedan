@@ -37,9 +37,6 @@
           <input id="loginPassword" type="password" autocomplete="current-password" required />
         </label>
         <div class="login-actions">
-          <label class="remember">
-            <input id="rememberMe" type="checkbox" /> 記住 Email
-          </label>
           <div class="login-buttons">
             <button type="submit" class="primary">登入</button>
             <button type="button" id="resetPassword" class="secondary">寄送重設連結</button>
@@ -48,13 +45,6 @@
       </form>
       <div class="login-footer">
         <p class="hint">如遇到登入錯誤，請先在 Firebase Console 的 Authentication 服務中啟用 Email/Password 登入方式。</p>
-        <div class="quick-demo">
-          <p class="meta">快速填入示範帳號 (僅自動帶入表單，不會自動登入)：</p>
-          <div class="quick-buttons">
-            <button type="button" class="secondary" data-quick-login data-email="admin@example.com" data-password="password">管理員示範</button>
-            <button type="button" class="secondary" data-quick-login data-email="staff@example.com" data-password="password">員工示範</button>
-          </div>
-        </div>
       </div>
     </section>
 
