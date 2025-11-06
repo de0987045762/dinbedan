@@ -1,38 +1,26 @@
-// ✅ 正確的 Firebase CDN 版本 import（可直接用在瀏覽器 GitHub Pages）
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-analytics.js";
-
+import { initializeApp } from 'firebase/app';
 import {
   getAuth,
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  signOut,
   sendPasswordResetEmail,
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-
+  signOut,
+} from 'firebase/auth';
 import {
   getFirestore,
   collection,
   doc,
   getDoc,
-  addDoc,
   setDoc,
   updateDoc,
+  addDoc,
   deleteDoc,
   onSnapshot,
   query,
   orderBy,
   limit,
   serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-
-import {
-  getStorage,
-  ref as storageRef,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject,
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
+} from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyAReTBGcVEi6JC0gRZWS110ePOv8kJ_hm0',
@@ -49,12 +37,15 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const SUPER_ADMIN_EMAILS = ['k987045762@gmail.com'];
+const REMEMBER_EMAIL_STORAGE_KEY = 'report-dashboard-remembered-email';
 
 const loginPage = document.getElementById('loginPage');
 const appPage = document.getElementById('app');
 const loginForm = document.getElementById('loginForm');
 const loginEmailInput = document.getElementById('loginEmail');
 const loginPasswordInput = document.getElementById('loginPassword');
+const rememberMeCheckbox = document.getElementById('rememberMe');
+const quickLoginButtons = document.querySelectorAll('[data-quick-login]');
 const resetPasswordButton = document.getElementById('resetPassword');
 const logoutButton = document.getElementById('logoutButton');
 const statusMessage = document.getElementById('statusMessage');
@@ -176,6 +167,8 @@ let unsubscribeWishes = null;
 let unsubscribeStore = null;
 let unsubscribeUsers = null;
 
+loadRememberedEmail();
+
 function toMillis(value) {
   if (!value) return null;
   if (typeof value === 'number') return value;
@@ -263,6 +256,24 @@ function setStatus(message, state = 'info', timeout = 0) {
         delete statusMessage.dataset.state;
       }
     }, timeout);
+  }
+}
+
+function loadRememberedEmail() {
+  if (!loginEmailInput || !rememberMeCheckbox) return;
+  const saved = localStorage.getItem(REMEMBER_EMAIL_STORAGE_KEY);
+  if (saved) {
+    loginEmailInput.value = saved;
+    rememberMeCheckbox.checked = true;
+  }
+}
+
+function persistRememberedEmail(email) {
+  if (!rememberMeCheckbox) return;
+  if (rememberMeCheckbox.checked && email) {
+    localStorage.setItem(REMEMBER_EMAIL_STORAGE_KEY, email);
+  } else {
+    localStorage.removeItem(REMEMBER_EMAIL_STORAGE_KEY);
   }
 }
 
@@ -1069,6 +1080,7 @@ if (loginForm) {
     submitButton.disabled = true;
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      persistRememberedEmail(email);
     } catch (error) {
       setStatus(mapAuthError(error), 'error');
       submitButton.disabled = false;
@@ -1089,6 +1101,20 @@ if (resetPasswordButton) {
     } catch (error) {
       setStatus(`寄送失敗：${error.message}`, 'error');
     }
+  });
+}
+
+if (quickLoginButtons && quickLoginButtons.length) {
+  quickLoginButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const { email = '', password = '' } = button.dataset;
+      if (loginEmailInput) loginEmailInput.value = email;
+      if (loginPasswordInput) loginPasswordInput.value = password;
+      if (rememberMeCheckbox) rememberMeCheckbox.checked = Boolean(email);
+      setStatus(email ? `已帶入 ${email}` : '');
+      if (email) persistRememberedEmail(email);
+      loginEmailInput?.focus();
+    });
   });
 }
 
