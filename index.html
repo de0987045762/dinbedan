@@ -80,6 +80,93 @@
         </div>
       </section>
 
+      <section class="card" id="salesDashboard" data-feature="reports">
+        <div class="section-header">
+          <div>
+            <h3>營業報表</h3>
+            <p class="hint">依日期與據點快速檢視每日營收與熱門品項。</p>
+          </div>
+          <div class="filter-bar">
+            <label>
+              起始日期
+              <input type="date" id="salesStartDate" />
+            </label>
+            <label>
+              結束日期
+              <input type="date" id="salesEndDate" />
+            </label>
+            <label>
+              據點篩選
+              <input type="text" id="salesLocation" list="locationOptions" placeholder="全部據點" />
+            </label>
+            <div class="filter-actions">
+              <button type="button" class="secondary" id="salesClear">清除篩選</button>
+              <button type="button" class="primary" id="salesApply">套用篩選</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="summary-grid">
+          <div class="stat">
+            <span class="stat-label">期間營收總額</span>
+            <span class="stat-value" id="salesTotalAmount">0</span>
+            <span class="meta" id="salesLocationSummary">全部據點</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">戰報筆數</span>
+            <span class="stat-value" id="salesReportCount">0</span>
+            <span class="meta">符合篩選條件的戰報數量</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">菜單紀錄</span>
+            <span class="stat-value" id="salesMenuCount">0</span>
+            <span class="meta">符合篩選的菜單品項筆數</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">平均營收</span>
+            <span class="stat-value" id="salesAverageAmount">0</span>
+            <span class="meta">營收總額 / 戰報筆數</span>
+          </div>
+        </div>
+
+        <div class="split-grid">
+          <div>
+            <div class="section-heading">
+              <h4>每日營收</h4>
+              <p class="meta">依日期顯示篩選後的戰報與營收金額</p>
+            </div>
+            <table class="table" aria-label="每日營收清單">
+              <thead>
+                <tr>
+                  <th>日期</th>
+                  <th>據點</th>
+                  <th>營收</th>
+                  <th>備註</th>
+                </tr>
+              </thead>
+              <tbody id="salesReportTableBody"></tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-heading">
+              <h4>熱門品項</h4>
+              <p class="meta">統計菜單紀錄的總數量與涉及據點</p>
+            </div>
+            <table class="table" aria-label="熱門品項清單">
+              <thead>
+                <tr>
+                  <th>品項</th>
+                  <th>總數量</th>
+                  <th>涉及據點</th>
+                  <th>紀錄數</th>
+                </tr>
+              </thead>
+              <tbody id="salesMenuTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <p id="statusMessage" class="status" aria-live="polite"></p>
 
       <section class="card" id="staffManagementCard" data-admin-only>

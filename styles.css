@@ -122,6 +122,22 @@ body {
   gap: 16px;
 }
 
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
 .title {
   margin: 0;
   font-size: 1.5rem;
@@ -153,6 +169,26 @@ body {
 .form-inline {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-bar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.filter-bar label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
   flex-wrap: wrap;
 }
 
@@ -239,6 +275,13 @@ button:disabled {
 .quick-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
   align-items: stretch;
 }
@@ -351,6 +394,13 @@ button:disabled {
 
 .table tr:nth-child(even) td {
   background: #f9fafb;
+}
+
+.split-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
 }
 
 .actions button {
