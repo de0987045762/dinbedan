@@ -1,60 +1,3 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>戰報管理 (Firebase)</title>
-  <script type="importmap">
-    {
-      "imports": {
-        "firebase/app": "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
-        "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js",
-        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"
-      }
-    }
-  </script>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <main class="layout">
-    <section id="loginPage" class="card login-card">
-      <div class="login-header">
-        <div>
-          <h1 class="title">📊 戰報管理系統</h1>
-          <p class="subtitle">請使用 Firebase 帳號登入，支援 Email / Password</p>
-        </div>
-        <div class="login-meta">
-          <span>若尚未開通帳號，請洽超級管理員</span>
-        </div>
-      </div>
-      <form id="loginForm" class="form-grid login-form">
-        <label>
-          電子郵件
-          <input id="loginEmail" type="email" autocomplete="email" required />
-        </label>
-        <label>
-          密碼
-          <input id="loginPassword" type="password" autocomplete="current-password" required />
-        </label>
-        <div class="login-actions">
-          <div class="login-buttons">
-            <button type="submit" class="primary">登入</button>
-            <button type="button" id="resetPassword" class="secondary">寄送重設連結</button>
-          </div>
-        </div>
-      </form>
-      <div class="login-footer">
-        <p class="hint">如遇到登入錯誤，請先在 Firebase Console 的 Authentication 服務中啟用 Email/Password 登入方式。</p>
-      </div>
-    </section>
-
-    <section id="app" class="hidden">
-      <header class="card header">
-        <div>
-          <h2 class="title">戰報管理系統</h2>
-          <p id="staffHint" class="subtitle"></p>
-        </div>
-        <div class="user-info">
           <div><strong>帳號：</strong><span id="userEmail"></span></div>
           <div><strong>角色：</strong><span id="userRole"></span></div>
           <button id="logoutButton" class="danger">登出</button>
@@ -77,6 +20,93 @@
         <div class="stat">
           <span class="stat-label">登入人數</span>
           <span class="stat-value" id="statStaffCount">0</span>
+        </div>
+      </section>
+
+      <section class="card" id="salesDashboard" data-feature="reports">
+        <div class="section-header">
+          <div>
+            <h3>營業報表</h3>
+            <p class="hint">依日期與據點快速檢視每日營收與熱門品項。</p>
+          </div>
+          <div class="filter-bar">
+            <label>
+              起始日期
+              <input type="date" id="salesStartDate" />
+            </label>
+            <label>
+              結束日期
+              <input type="date" id="salesEndDate" />
+            </label>
+            <label>
+              據點篩選
+              <input type="text" id="salesLocation" list="locationOptions" placeholder="全部據點" />
+            </label>
+            <div class="filter-actions">
+              <button type="button" class="secondary" id="salesClear">清除篩選</button>
+              <button type="button" class="primary" id="salesApply">套用篩選</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="summary-grid">
+          <div class="stat">
+            <span class="stat-label">期間營收總額</span>
+            <span class="stat-value" id="salesTotalAmount">0</span>
+            <span class="meta" id="salesLocationSummary">全部據點</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">戰報筆數</span>
+            <span class="stat-value" id="salesReportCount">0</span>
+            <span class="meta">符合篩選條件的戰報數量</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">菜單紀錄</span>
+            <span class="stat-value" id="salesMenuCount">0</span>
+            <span class="meta">符合篩選的菜單品項筆數</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">平均營收</span>
+            <span class="stat-value" id="salesAverageAmount">0</span>
+            <span class="meta">營收總額 / 戰報筆數</span>
+          </div>
+        </div>
+
+        <div class="split-grid">
+          <div>
+            <div class="section-heading">
+              <h4>每日營收</h4>
+              <p class="meta">依日期顯示篩選後的戰報與營收金額</p>
+            </div>
+            <table class="table" aria-label="每日營收清單">
+              <thead>
+                <tr>
+                  <th>日期</th>
+                  <th>據點</th>
+                  <th>營收</th>
+                  <th>備註</th>
+                </tr>
+              </thead>
+              <tbody id="salesReportTableBody"></tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-heading">
+              <h4>熱門品項</h4>
+              <p class="meta">統計菜單紀錄的總數量與涉及據點</p>
+            </div>
+            <table class="table" aria-label="熱門品項清單">
+              <thead>
+                <tr>
+                  <th>品項</th>
+                  <th>總數量</th>
+                  <th>涉及據點</th>
+                  <th>紀錄數</th>
+                </tr>
+              </thead>
+              <tbody id="salesMenuTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </section>
 
@@ -105,248 +135,3 @@
                 <option value="staff">員工</option>
                 <option value="manager">主管</option>
                 <option value="admin">管理員</option>
-              </select>
-            </label>
-          </div>
-          <fieldset class="feature-grid">
-            <legend>功能權限</legend>
-            <label><input type="checkbox" value="reports" name="staffFeature" />戰報</label>
-            <label><input type="checkbox" value="menu" name="staffFeature" />菜單管理</label>
-            <label><input type="checkbox" value="schedule" name="staffFeature" />排班</label>
-            <label><input type="checkbox" value="wishes" name="staffFeature" />許願池</label>
-            <label><input type="checkbox" value="store" name="staffFeature" />點數商城</label>
-          </fieldset>
-          <div class="form-inline">
-            <button type="submit" class="primary">儲存人員資料</button>
-            <button type="button" id="staffFormReset" class="link">清除欄位</button>
-            <button type="button" id="staffDeleteButton" class="danger hidden">刪除此人員資料</button>
-          </div>
-        </form>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>姓名</th>
-              <th>電子郵件</th>
-              <th>角色</th>
-              <th>功能權限</th>
-              <th class="actions">操作</th>
-            </tr>
-          </thead>
-          <tbody id="staffTableBody"></tbody>
-        </table>
-      </section>
-
-      <section class="card">
-        <h3>公告</h3>
-        <form id="announcementForm" class="form-grid" data-admin-only>
-          <label>
-            標題
-            <input name="title" type="text" required />
-          </label>
-          <label>
-            內容
-            <textarea name="content" rows="3" required></textarea>
-          </label>
-          <div class="form-inline">
-            <button type="submit" class="primary" id="announcementSubmit">新增公告</button>
-            <button type="button" id="announcementCancel" class="link hidden">取消編輯</button>
-          </div>
-        </form>
-        <ul id="announcementList" class="list"></ul>
-      </section>
-
-      <section class="card">
-        <h3>據點</h3>
-        <form id="locationForm" class="form-inline" data-admin-only>
-          <input id="locationName" type="text" placeholder="輸入據點名稱" required />
-          <button type="submit" class="primary" id="locationSubmit">新增據點</button>
-          <button type="button" id="locationCancel" class="link hidden">取消編輯</button>
-        </form>
-        <ul id="locationList" class="list"></ul>
-      </section>
-
-      <section class="card" data-feature="reports">
-        <h3>戰報</h3>
-        <form id="reportForm" class="form-grid">
-          <label>
-            日期
-            <input id="reportDate" type="date" required />
-          </label>
-          <label>
-            據點
-            <input id="reportLocation" type="text" list="locationOptions" placeholder="輸入或選擇據點" required />
-          </label>
-          <label>
-            今日營收 (元)
-            <input id="reportSales" type="number" min="0" step="1" value="0" required />
-          </label>
-          <label class="full">
-            備註
-            <textarea id="reportNotes" rows="3" placeholder="可輸入重點或描述"></textarea>
-          </label>
-          <div class="form-inline">
-            <button type="submit" class="primary" id="reportSubmit">新增戰報</button>
-            <button type="button" id="reportCancel" class="link hidden">取消編輯</button>
-          </div>
-        </form>
-        <datalist id="locationOptions"></datalist>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>日期</th>
-              <th>據點</th>
-              <th>營收</th>
-              <th>建立者</th>
-              <th>備註</th>
-              <th class="actions">操作</th>
-            </tr>
-          </thead>
-          <tbody id="reportTableBody"></tbody>
-        </table>
-      </section>
-
-      <section class="card" data-feature="menu">
-        <h3>菜單管理</h3>
-        <form id="menuForm" class="form-grid">
-          <label>
-            日期
-            <input id="menuDate" type="date" required />
-          </label>
-          <label>
-            據點
-            <input id="menuLocation" type="text" list="locationOptions" placeholder="輸入或選擇據點" required />
-          </label>
-          <label>
-            品項名稱
-            <input id="menuItem" type="text" placeholder="例如：雞排飯" required />
-          </label>
-          <label>
-            數量
-            <input id="menuQuantity" type="number" min="0" step="1" value="0" required />
-          </label>
-          <label class="full">
-            備註
-            <textarea id="menuNotes" rows="2" placeholder="可記錄每日菜單狀況"></textarea>
-          </label>
-          <div class="form-inline">
-            <button type="submit" class="primary" id="menuSubmit">新增菜單紀錄</button>
-            <button type="button" id="menuCancel" class="link hidden">取消編輯</button>
-          </div>
-        </form>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>日期</th>
-              <th>據點</th>
-              <th>品項</th>
-              <th>數量</th>
-              <th>備註</th>
-              <th class="actions">操作</th>
-            </tr>
-          </thead>
-          <tbody id="menuTableBody"></tbody>
-        </table>
-      </section>
-
-      <section class="card" data-feature="schedule">
-        <h3>排班</h3>
-        <form id="scheduleForm" class="form-grid">
-          <label>
-            日期
-            <input id="scheduleDate" type="date" required />
-          </label>
-          <label>
-            人員名稱
-            <input id="scheduleStaff" type="text" list="staffOptions" placeholder="輸入員工姓名" required />
-          </label>
-          <label>
-            班別
-            <select id="scheduleShift" required>
-              <option value="早班">早班</option>
-              <option value="中班">中班</option>
-              <option value="晚班">晚班</option>
-              <option value="全日">全日</option>
-            </select>
-          </label>
-          <label class="full">
-            備註
-            <textarea id="scheduleNotes" rows="2" placeholder="可填寫工作重點"></textarea>
-          </label>
-          <div class="form-inline">
-            <button type="submit" class="primary" id="scheduleSubmit">新增班表</button>
-            <button type="button" id="scheduleCancel" class="link hidden">取消編輯</button>
-          </div>
-        </form>
-        <datalist id="staffOptions"></datalist>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>日期</th>
-              <th>人員</th>
-              <th>班別</th>
-              <th>備註</th>
-              <th class="actions">操作</th>
-            </tr>
-          </thead>
-          <tbody id="scheduleTableBody"></tbody>
-        </table>
-      </section>
-
-      <section class="card" data-feature="wishes">
-        <h3>許願池</h3>
-        <form id="wishForm" class="form-grid">
-          <label>
-            願望標題
-            <input id="wishTitle" type="text" placeholder="輸入願望主題" required />
-          </label>
-          <label class="full">
-            內容
-            <textarea id="wishDescription" rows="3" placeholder="描述願望內容" required></textarea>
-          </label>
-          <div class="form-inline">
-            <button type="submit" class="primary" id="wishSubmit">送出願望</button>
-            <button type="button" id="wishCancel" class="link hidden">取消編輯</button>
-          </div>
-        </form>
-        <ul id="wishList" class="list"></ul>
-      </section>
-
-      <section class="card" data-feature="store">
-        <h3>點數商城</h3>
-        <form id="storeForm" class="form-grid">
-          <label>
-            兌換品項
-            <input id="storeItem" type="text" placeholder="想兌換的商品" required />
-          </label>
-          <label>
-            數量
-            <input id="storeQuantity" type="number" min="1" step="1" value="1" required />
-          </label>
-          <label class="full">
-            備註
-            <textarea id="storeNotes" rows="2" placeholder="可填寫點數或其他需求"></textarea>
-          </label>
-          <div class="form-inline">
-            <button type="submit" class="primary" id="storeSubmit">提出兌換申請</button>
-            <button type="button" id="storeCancel" class="link hidden">取消編輯</button>
-          </div>
-        </form>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>品項</th>
-              <th>數量</th>
-              <th>申請人</th>
-              <th>備註</th>
-              <th class="actions">操作</th>
-            </tr>
-          </thead>
-          <tbody id="storeTableBody"></tbody>
-        </table>
-      </section>
-    </section>
-  </main>
-
-  <script type="module" src="app.js"></script>
-</body>
-</html>
